@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial)
+# 2. Estilização Cyberpunk Neon
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -106,31 +106,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. LISTA DOS TIMES DA LIGA
-# DICA: Substitua o 'id': None pelos números dos IDs dos times para atualização 100% instantânea sem busca
-TIMES_LEAGUE = [
-    {"nome": "Tupinambaranas Futebol Clube", "cartoleiro": "Vitor Geromini", "id": None},
-    {"nome": "Lockdown United", "cartoleiro": "Caio Monteiro", "id": None},
-    {"nome": "Budaibes FC", "cartoleiro": "Bruno Budaibes", "id": None},
-    {"nome": "Open de Corote FC", "cartoleiro": "Hermes Augusto", "id": None},
-    {"nome": "Burpee F.C.", "cartoleiro": "Helio Isayama", "id": None},
-    {"nome": "Toon Squad FC", "cartoleiro": "Vinicius Monteiro", "id": None},
-    {"nome": "Covrinthians FC", "cartoleiro": "Denis M. Covre", "id": None},
-    {"nome": "Bom Dcopus SPFC", "cartoleiro": "Gutenberg", "id": None},
-    {"nome": "CPR sport", "cartoleiro": "Cesar Postingel Ramo", "id": None},
-    {"nome": "Bueno team EC", "cartoleiro": "Marcelo Bueno", "id": None},
-    {"nome": "Red, Black and White", "cartoleiro": "Diego Covre", "id": None},
-    {"nome": "Tgramos82", "cartoleiro": "Thiago Ramos", "id": None},
-    {"nome": "promadalozofc", "cartoleiro": "madalozo", "id": None},
-    {"nome": "Pedroo SPFC", "cartoleiro": "Pedro Lopes", "id": None},
-    {"nome": "Mitador Campeão", "cartoleiro": "Barves", "id": None}
-]
-
 @st.cache_data(ttl=120)  # Recarrega a cada 2 minutos
 def carregar_dados_liga():
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     
-    # Puxa status do mercado
+    # Status do mercado
     try:
         res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
         rodada_atual = res_m.json().get("rodada_atual", 0) if res_m.status_code == 200 else 20
@@ -139,47 +119,49 @@ def carregar_dados_liga():
         
     turno_atual = 2 if rodada_atual > 19 else 1
     
-    # Dicionário de pontuação base como retaguarda
-    df_base_dict = {}
+    # 1. Lê a Base CSV
+    df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
             try:
-                df_csv = pd.read_csv(csv_file, sep=None, engine='python', encoding='utf-8-sig')
-                df_csv.columns = df_csv.columns.str.strip()
-                for _, r in df_csv.iterrows():
-                    df_base_dict[str(r["Time"]).strip().lower()] = float(r["Total"])
+                df_base = pd.read_csv(csv_file, sep=None, engine='python', encoding='utf-8-sig')
+                df_base.columns = df_base.columns.str.strip()
                 break
             except:
                 pass
 
+    if df_base is None:
+        st.error("⚠️ O arquivo 'base_cartola_oficial.csv' não foi encontrado no GitHub!")
+        return pd.DataFrame(), rodada_atual, turno_atual
+
     lista_times = []
     
-    for t_item in TIMES_LEAGUE:
-        nome_time = t_item["nome"]
-        cartoleiro = t_item["cartoleiro"]
-        time_id = t_item["id"]
+    # 2. Varre time a time, busca no Cartola e SOMA com o CSV
+    for index, row in df_base.iterrows():
+        nome_time = str(row["Time"]).strip()
+        cartoleiro = str(row["Cartoleiro"]).strip()
+        pontos_base_historico = float(row["Total"])
         
-        # Se não houver ID fixo definido, tenta buscar via API do Cartola
-        if not time_id:
-            nome_limpo = nome_time.replace(",", "").replace(" and ", " ").replace("  ", " ").strip()
-            url_busca = "https://api.cartola.globo.com/times"
-            try:
-                res_b = requests.get(url_busca, params={"q": nome_limpo}, headers=headers, timeout=5)
-                if res_b.status_code == 200:
-                    resultados = res_b.json()
-                    lista_r = resultados if isinstance(resultados, list) else resultados.get("times", [])
-                    for t in lista_r:
-                        if t.get("nome_cartola", "").lower() == cartoleiro.lower() or t.get("nome", "").lower() == nome_time.lower():
-                            time_id = t.get("time_id")
-                            break
-                    if not time_id and len(lista_r) > 0:
-                        time_id = lista_r[0].get("time_id")
-            except:
-                pass
+        nome_limpo = nome_time.replace(",", "").replace(" and ", " ").replace("  ", " ").strip()
+        url_busca = "https://api.cartola.globo.com/times"
+        time_id = None
+        
+        try:
+            res_b = requests.get(url_busca, params={"q": nome_limpo}, headers=headers, timeout=5)
+            if res_b.status_code == 200:
+                resultados = res_b.json()
+                lista_r = resultados if isinstance(resultados, list) else resultados.get("times", [])
+                for t in lista_r:
+                    if t.get("nome_cartola", "").lower() == cartoleiro.lower() or t.get("nome", "").lower() == nome_time.lower():
+                        time_id = t.get("time_id")
+                        break
+                if not time_id and len(lista_r) > 0:
+                    time_id = lista_r[0].get("time_id")
+        except:
+            pass
 
-        pt_rodada, pt_mes, pt_turno, pt_total_api = 0.0, 0.0, 0.0, 0.0
+        pt_rodada, pt_mes, pt_turno = 0.0, 0.0, 0.0
         
-        # Requisição direta do ID do time na Globo (Ao vivo)
         if time_id:
             try:
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
@@ -187,22 +169,20 @@ def carregar_dados_liga():
                     dados = res_p.json()
                     p_raw = dados.get("pontos", 0)
                     if isinstance(p_raw, dict):
-                        pt_total_api = float(p_raw.get("campeonato", p_raw.get("total", 0)))
                         pt_rodada = float(p_raw.get("rodada", 0))
                         pt_mes = float(p_raw.get("mes", 0))
                         pt_turno = float(p_raw.get("turno", 0))
-                    elif isinstance(p_raw, (int, float)):
-                        pt_total_api = float(p_raw)
             except:
                 pass
         
-        total_historico = df_base_dict.get(nome_time.lower(), 0.0)
-        total_final = pt_total_api if pt_total_api > 0 else (total_historico + pt_rodada)
+        # MÁGICA: Total Geral = Pontos do CSV (Rodadas 1-20) + Pontos da Rodada Atual do Cartola
+        total_acumulado = pontos_base_historico + pt_rodada
         
         lista_times.append({
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
-            "Total": round(total_final, 2),
+            "Total Base": round(pontos_base_historico, 2),
+            "Total": round(total_acumulado, 2),
             "Última Rodada": round(pt_rodada, 2),
             "Mês": round(pt_mes, 2),
             "Turno": round(pt_turno, 2)
@@ -218,7 +198,7 @@ def carregar_dados_liga():
     
     return df, rodada_atual, turno_atual
 
-# --- CABEÇALHO COM LOGO ---
+# --- CABEÇALHO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -239,14 +219,14 @@ with col_title:
 
 st.divider()
 
-# Botão de Atualização Manual / F5
+# Botão de Atualização Manual
 col_status, col_btn = st.columns([4, 1])
 with col_btn:
     if st.button("🔄 Atualizar Ao Vivo"):
         st.cache_data.clear()
         st.rerun()
 
-with st.spinner("⚡ Conectando ao vivo com o Cartola FC..."):
+with st.spinner("⚡ Carregando base histórica e conectando ao Cartola FC..."):
     df, rodada_atual, turno_atual = carregar_dados_liga()
 
 if not df.empty:
@@ -264,16 +244,36 @@ if not df.empty:
 
     st.write("")
 
-    # ABAS
+    # ABAS PRINCIPAIS
     tab1, tab2 = st.tabs(["🏆 Classificação Geral", "📊 Gráficos & Estatísticas"])
 
     with tab1:
         st.subheader("⚡ Tabela de Posições da Liga")
-        st.dataframe(
-            df[["Posição", "Time", "Cartoleiro", "Total", "Última Rodada", "Mês", "Turno", "Dif. p/ Rival", "Dif. p/ Líder"]],
-            use_container_width=True,
-            hide_index=True
+        
+        # BOTÕES DE ALTERNÂNCIA (Geral vs Última Rodada)
+        visao = st.radio(
+            "Selecione a visualização:",
+            ["Classificação Geral (Total Acumulado)", "Pontuação da Última Rodada"],
+            horizontal=True
         )
+        
+        st.write("")
+        
+        if visao == "Classificação Geral (Total Acumulado)":
+            st.dataframe(
+                df[["Posição", "Time", "Cartoleiro", "Total", "Última Rodada", "Mês", "Turno", "Dif. p/ Rival", "Dif. p/ Líder"]],
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            # Tabela ordenada pelo desempenho da última rodada
+            df_rodada = df.sort_values(by="Última Rodada", ascending=False).reset_index(drop=True)
+            df_rodada["Pos. Rodada"] = df_rodada.index + 1
+            st.dataframe(
+                df_rodada[["Pos. Rodada", "Time", "Cartoleiro", "Última Rodada", "Total"]],
+                use_container_width=True,
+                hide_index=True
+            )
 
     with tab2:
         st.subheader("🎯 Desempenho da Última Rodada")
@@ -301,4 +301,4 @@ if not df.empty:
         )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Atualização automática conectada ao Cartola FC.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Base Sincronizada com o Cartola FC.")
