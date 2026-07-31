@@ -218,7 +218,7 @@ with col_logo:
 
 with col_title:
     st.title("BLACK GUYS LEAGUE")
-    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>TEMPORADA 2026 • SCOUTS DOS MITOS</h4>", unsafe_allow_html=True)
 
 st.divider()
 
