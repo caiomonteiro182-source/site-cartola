@@ -69,7 +69,6 @@ st.markdown("""
         color: #00f2ff !important;
         font-family: 'Teko', sans-serif !important;
         font-size: 38px !important;
-        text-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
     }
 
     /* Estilização das Abas */
@@ -106,17 +105,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento Inteligente de Dados
-@st.cache_data(ttl=60)  # Recarrega a cada 1 minuto
+# 3. Função de Carregamento de Dados (100% Precisa)
+@st.cache_data(ttl=60)
 def carregar_dados_liga():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json"
     }
     
-    # 1. Busca status do mercado e rodada atual no Cartola FC
+    # Busca status do mercado no Cartola FC
+    # status_mercado = 1 (Mercado Aberto / Entre rodadas)
+    # status_mercado = 2 (Mercado Fechado / Jogos em andamento ao vivo)
     rodada_cartola = 20
-    status_mercado = 1  # 1: Mercado Aberto, 2: Mercado Fechado (Rodada em andamento)
+    status_mercado = 1 
     try:
         res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
         if res_m.status_code == 200:
@@ -127,11 +128,8 @@ def carregar_dados_liga():
         pass
         
     turno_atual = 2 if rodada_cartola > 19 else 1
-    
-    # Rodada exata que já está consolidada e inclusa no seu CSV
-    RODADA_BASE_CSV = 20 
 
-    # 2. Carrega o CSV base
+    # Carrega o CSV base
     df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -148,10 +146,11 @@ def carregar_dados_liga():
 
     lista_times = []
     
-    # 3. Processa cada time do CSV
     for _, row in df_base.iterrows():
         nome_time = str(row["Time"]).strip()
         cartoleiro = str(row["Cartoleiro"]).strip()
+        
+        # O valor do CSV 'Total' é a base soberana consolidada
         pontos_base_historico = float(row["Total"])
         
         # Leitura da coluna ID
@@ -182,10 +181,12 @@ def carregar_dados_liga():
             except:
                 pass
         
-        # CORREÇÃO DA SOMA:
-        # Só soma a pontuação da API se a rodada do Cartola for MAIOR que a rodada do CSV (rodada_cartola > RODADA_BASE_CSV).
-        # Se for a mesma rodada (Rodada 20), mantém o Total exato do CSV para não duplicar os pontos!
-        if rodada_cartola > RODADA_BASE_CSV:
+        # REGRA DEFINITIVA:
+        # A pontuação do CSV JÁ CONTÉM todas as rodadas consolidadas do site do Cartola.
+        # Portanto, o 'Total' exibe EXATAMENTE o valor do CSV.
+        # A pontuação da API só será somada temporariamente SE o mercado estiver FECHADO (status == 2),
+        # ou seja, enquanto os jogos da nova rodada estiverem ocorrendo AO VIVO.
+        if status_mercado == 2:
             total_acumulado = pontos_base_historico + pt_rodada
         else:
             total_acumulado = pontos_base_historico
@@ -193,7 +194,6 @@ def carregar_dados_liga():
         lista_times.append({
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
-            "Total Base": round(pontos_base_historico, 2),
             "Total": round(total_acumulado, 2),
             "Última Rodada": round(pt_rodada, 2),
             "Mês": round(pt_mes, 2),
