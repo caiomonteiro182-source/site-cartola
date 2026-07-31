@@ -98,6 +98,17 @@ st.markdown("""
         overflow: hidden;
     }
 
+    /* Card de Vencedor do Mês */
+    .card-vencedor {
+        background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border: 2px solid #eab308;
+        box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        text-align: center;
+    }
+
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
@@ -105,7 +116,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados (100% Precisa)
+# 3. Função de Carregamento de Dados da Liga
 @st.cache_data(ttl=60)
 def carregar_dados_liga():
     headers = {
@@ -113,9 +124,6 @@ def carregar_dados_liga():
         "Accept": "application/json"
     }
     
-    # Busca status do mercado no Cartola FC
-    # status_mercado = 1 (Mercado Aberto)
-    # status_mercado = 2 (Mercado Fechado / Rodada ao vivo)
     rodada_cartola = 20
     status_mercado = 1 
     try:
@@ -127,7 +135,7 @@ def carregar_dados_liga():
     except:
         pass
 
-    # Carrega o CSV base
+    # Carrega o CSV base principal
     df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -147,11 +155,8 @@ def carregar_dados_liga():
     for _, row in df_base.iterrows():
         nome_time = str(row["Time"]).strip()
         cartoleiro = str(row["Cartoleiro"]).strip()
-        
-        # O valor do CSV 'Total' é a base soberana consolidada
         pontos_base_historico = float(row["Total"])
         
-        # Leitura da coluna ID
         time_id = row.get("ID", None)
         if pd.notna(time_id):
             try:
@@ -163,7 +168,6 @@ def carregar_dados_liga():
 
         pt_rodada = 0.0
         
-        # Consulta ao vivo via ID na API do Cartola
         if time_id:
             try:
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
@@ -177,8 +181,6 @@ def carregar_dados_liga():
             except:
                 pass
         
-        # O Total do CSV reflete exatamente o estado atual.
-        # Só soma a pontuação temporária se a rodada estiver acontecendo AO VIVO (status_mercado == 2)
         if status_mercado == 2:
             total_acumulado = pontos_base_historico + pt_rodada
         else:
@@ -201,7 +203,19 @@ def carregar_dados_liga():
     
     return df, rodada_cartola
 
-# --- 4. CABEÇALHO & LOGO ---
+# 4. Função para carregar a base de vencedores do mês
+@st.cache_data(ttl=60)
+def carregar_base_vencedores():
+    if os.path.exists("base_vencedores.csv"):
+        try:
+            df_v = pd.read_csv("base_vencedores.csv", sep=None, engine='python', encoding='utf-8-sig')
+            df_v.columns = df_v.columns.str.strip()
+            return df_v
+        except:
+            return None
+    return None
+
+# --- 5. CABEÇALHO & LOGO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -218,7 +232,7 @@ with col_logo:
 
 with col_title:
     st.title("BLACK GUYS LEAGUE")
-    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>TEMPORADA 2026 • SCOUTS DOS MITOS</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -231,8 +245,9 @@ with col_btn:
 
 with st.spinner("⚡ Conectando ao Cartola FC e sincronizando pontos ao vivo..."):
     df, rodada_atual = carregar_dados_liga()
+    df_vencedores = carregar_base_vencedores()
 
-# --- 5. VISUALIZAÇÃO E TABELAS ---
+# --- 6. VISUALIZAÇÃO E TABELAS ---
 if not df.empty:
     # KPI METRIC CARDS
     lider_geral = df.iloc[0]
@@ -245,7 +260,7 @@ if not df.empty:
     st.write("")
 
     # ABAS
-    tab1, tab2 = st.tabs(["🏆 Classificação Geral", "📊 Gráficos & Estatísticas"])
+    tab1, tab2, tab3 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas"])
 
     with tab1:
         st.subheader("⚡ Tabela de Posições da Liga")
@@ -275,6 +290,40 @@ if not df.empty:
             )
 
     with tab2:
+        st.subheader("👑 Galeria de Campeões Mensais")
+        st.caption("Premiações e mitações mês a mês na Black Guys League.")
+        
+        if df_vencedores is not None and not df_vencedores.empty:
+            # Tabela resumida
+            st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
+            
+            st.write("")
+            st.divider()
+            
+            # Cards em colunas para dar visual moderno
+            cols_v = st.columns(3)
+            idx_col = 0
+            
+            for _, row in df_vencedores.iterrows():
+                mes = row.get("Mês", row.get("Mes", "Mês"))
+                vencedor = row.get("Vencedor", row.get("Time", "-"))
+                pontos = row.get("Pontos", row.get("Pontuação", "-"))
+                cartoleiro = row.get("Cartoleiro", "")
+                
+                with cols_v[idx_col % 3]:
+                    st.markdown(f"""
+                        <div class="card-vencedor">
+                            <h4 style="color: #eab308; margin: 0;">🥇 {mes}</h4>
+                            <h3 style="color: #00f2ff; margin: 5px 0;">{vencedor}</h3>
+                            <p style="color: #c084fc; margin: 0; font-weight: bold;">{cartoleiro}</p>
+                            <p style="color: #e2e8f0; margin-top: 5px; font-size: 18px;"><strong>{pontos}</strong></p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                idx_col += 1
+        else:
+            st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
+
+    with tab3:
         st.subheader("🎯 Desempenho da Última Rodada")
         st.caption("Rendimento isolado de cada cartoleiro na rodada mais recente.")
         
