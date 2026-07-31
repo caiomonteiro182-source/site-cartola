@@ -114,8 +114,8 @@ def carregar_dados_liga():
     }
     
     # Busca status do mercado no Cartola FC
-    # status_mercado = 1 (Mercado Aberto / Entre rodadas)
-    # status_mercado = 2 (Mercado Fechado / Jogos em andamento ao vivo)
+    # status_mercado = 1 (Mercado Aberto)
+    # status_mercado = 2 (Mercado Fechado / Rodada ao vivo)
     rodada_cartola = 20
     status_mercado = 1 
     try:
@@ -126,8 +126,6 @@ def carregar_dados_liga():
             status_mercado = dados_m.get("status_mercado", 1)
     except:
         pass
-        
-    turno_atual = 2 if rodada_cartola > 19 else 1
 
     # Carrega o CSV base
     df_base = None
@@ -142,7 +140,7 @@ def carregar_dados_liga():
 
     if df_base is None:
         st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
-        return pd.DataFrame(), rodada_cartola, turno_atual
+        return pd.DataFrame(), rodada_cartola
 
     lista_times = []
     
@@ -163,7 +161,7 @@ def carregar_dados_liga():
         else:
             time_id = None
 
-        pt_rodada, pt_mes, pt_turno = 0.0, 0.0, 0.0
+        pt_rodada = 0.0
         
         # Consulta ao vivo via ID na API do Cartola
         if time_id:
@@ -174,18 +172,13 @@ def carregar_dados_liga():
                     p_raw = dados.get("pontos", 0)
                     if isinstance(p_raw, dict):
                         pt_rodada = float(p_raw.get("rodada", 0))
-                        pt_mes = float(p_raw.get("mes", 0))
-                        pt_turno = float(p_raw.get("turno", 0))
                     elif isinstance(p_raw, (int, float)):
                         pt_rodada = float(p_raw)
             except:
                 pass
         
-        # REGRA DEFINITIVA:
-        # A pontuação do CSV JÁ CONTÉM todas as rodadas consolidadas do site do Cartola.
-        # Portanto, o 'Total' exibe EXATAMENTE o valor do CSV.
-        # A pontuação da API só será somada temporariamente SE o mercado estiver FECHADO (status == 2),
-        # ou seja, enquanto os jogos da nova rodada estiverem ocorrendo AO VIVO.
+        # O Total do CSV reflete exatamente o estado atual.
+        # Só soma a pontuação temporária se a rodada estiver acontecendo AO VIVO (status_mercado == 2)
         if status_mercado == 2:
             total_acumulado = pontos_base_historico + pt_rodada
         else:
@@ -195,9 +188,7 @@ def carregar_dados_liga():
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
             "Total": round(total_acumulado, 2),
-            "Última Rodada": round(pt_rodada, 2),
-            "Mês": round(pt_mes, 2),
-            "Turno": round(pt_turno, 2)
+            "Última Rodada": round(pt_rodada, 2)
         })
 
     df = pd.DataFrame(lista_times)
@@ -208,7 +199,7 @@ def carregar_dados_liga():
     df["Dif. p/ Rival"] = (df["Total"].shift(1) - df["Total"]).round(2).fillna(0)
     df["Dif. p/ Líder"] = (top_score - df["Total"]).round(2)
     
-    return df, rodada_cartola, turno_atual
+    return df, rodada_cartola
 
 # --- 4. CABEÇALHO & LOGO ---
 col_logo, col_title = st.columns([1, 4])
@@ -239,21 +230,17 @@ with col_btn:
         st.rerun()
 
 with st.spinner("⚡ Conectando ao Cartola FC e sincronizando pontos ao vivo..."):
-    df, rodada_atual, turno_atual = carregar_dados_liga()
+    df, rodada_atual = carregar_dados_liga()
 
 # --- 5. VISUALIZAÇÃO E TABELAS ---
 if not df.empty:
     # KPI METRIC CARDS
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Última Rodada", ascending=False).iloc[0]
-    lider_mes = df.sort_values(by="Mês", ascending=False).iloc[0]
-    lider_turno = df.sort_values(by="Turno", ascending=False).iloc[0]
 
-    k1, k2, k3, k4 = st.columns(4)
+    k1, k2 = st.columns(2)
     k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total']} pts")
     k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"{mito_rodada['Última Rodada']} pts")
-    k3.metric("📈 LÍDER DO MÊS", f"{lider_mes['Time']}", f"{lider_mes['Mês']} pts")
-    k4.metric(f"🔥 LÍDER DO {turno_atual}º TURNO", f"{lider_turno['Time']}", f"{lider_turno['Turno']} pts")
 
     st.write("")
 
@@ -274,7 +261,7 @@ if not df.empty:
         
         if visao == "Classificação Geral (Total Acumulado)":
             st.dataframe(
-                df[["Posição", "Time", "Cartoleiro", "Total", "Última Rodada", "Mês", "Turno", "Dif. p/ Rival", "Dif. p/ Líder"]],
+                df[["Posição", "Time", "Cartoleiro", "Total", "Última Rodada", "Dif. p/ Rival", "Dif. p/ Líder"]],
                 use_container_width=True,
                 hide_index=True
             )
@@ -313,4 +300,4 @@ if not df.empty:
         )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Sincronizado automaticamente via API Cartola FC.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sincronizado automaticamente via API Cartola FC.")
