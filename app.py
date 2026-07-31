@@ -106,24 +106,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados com Suporte ao CSV + IDs
-@st.cache_data(ttl=60)  # Recarrega dados da API a cada 60 segundos
+# 3. Função de Carregamento Inteligente de Dados
+@st.cache_data(ttl=60)  # Recarrega a cada 1 minuto
 def carregar_dados_liga():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json"
     }
     
-    # Busca status do mercado e rodada atual
+    # 1. Busca status do mercado e rodada atual
+    rodada_cartola = 20
+    status_mercado = 1  # 1: Aberto, 2: Fechado (Rodada ao vivo)
     try:
         res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
-        rodada_atual = res_m.json().get("rodada_atual", 0) if res_m.status_code == 200 else 20
+        if res_m.status_code == 200:
+            dados_m = res_m.json()
+            rodada_cartola = dados_m.get("rodada_atual", 20)
+            status_mercado = dados_m.get("status_mercado", 1)
     except:
-        rodada_atual = 20
+        pass
         
-    turno_atual = 2 if rodada_atual > 19 else 1
+    turno_atual = 2 if rodada_cartola > 19 else 1
     
-    # 1. Carrega o CSV base com as pontuações históricas e a coluna ID
+    # Rodada consolidada no CSV base
+    RODADA_BASE_CSV = 20 
+
+    # 2. Carrega o CSV base
     df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -136,17 +144,17 @@ def carregar_dados_liga():
 
     if df_base is None:
         st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
-        return pd.DataFrame(), rodada_atual, turno_atual
+        return pd.DataFrame(), rodada_cartola, turno_atual
 
     lista_times = []
     
-    # 2. Varre cada linha do CSV e consulta a API da Globo pelo ID
+    # 3. Processa cada time do CSV
     for _, row in df_base.iterrows():
         nome_time = str(row["Time"]).strip()
         cartoleiro = str(row["Cartoleiro"]).strip()
         pontos_base_historico = float(row["Total"])
         
-        # Pega a coluna ID (trata caso a coluna venha como int, float ou string)
+        # Leitura da coluna ID
         time_id = row.get("ID", None)
         if pd.notna(time_id):
             try:
@@ -158,7 +166,7 @@ def carregar_dados_liga():
 
         pt_rodada, pt_mes, pt_turno = 0.0, 0.0, 0.0
         
-        # Faz requisição direta na API oficial usando o ID do time
+        # Consulta ao vivo via ID na API do Cartola
         if time_id:
             try:
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
@@ -174,8 +182,13 @@ def carregar_dados_liga():
             except:
                 pass
         
-        # Cálculo final: Base Fixa + Pontos em Tempo Real da Rodada
-        total_acumulado = pontos_base_historico + pt_rodada
+        # LÓGICA DE SOMA REVISADA:
+        # Só soma a pontuação do Cartola se já for uma nova rodada (rodada_cartola > RODADA_BASE_CSV)
+        # OU se os jogos da nova rodada estiverem acontecendo ao vivo (status_mercado == 2)
+        if rodada_cartola > RODADA_BASE_CSV or status_mercado == 2:
+            total_acumulado = pontos_base_historico + pt_rodada
+        else:
+            total_acumulado = pontos_base_historico
         
         lista_times.append({
             "Time": nome_time,
@@ -195,7 +208,7 @@ def carregar_dados_liga():
     df["Dif. p/ Rival"] = (df["Total"].shift(1) - df["Total"]).round(2).fillna(0)
     df["Dif. p/ Líder"] = (top_score - df["Total"]).round(2)
     
-    return df, rodada_atual, turno_atual
+    return df, rodada_cartola, turno_atual
 
 # --- 4. CABEÇALHO & LOGO ---
 col_logo, col_title = st.columns([1, 4])
