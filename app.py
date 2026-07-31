@@ -114,9 +114,9 @@ def carregar_dados_liga():
         "Accept": "application/json"
     }
     
-    # 1. Busca status do mercado e rodada atual
+    # 1. Busca status do mercado e rodada atual no Cartola FC
     rodada_cartola = 20
-    status_mercado = 1  # 1: Aberto, 2: Fechado (Rodada ao vivo)
+    status_mercado = 1  # 1: Mercado Aberto, 2: Mercado Fechado (Rodada em andamento)
     try:
         res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
         if res_m.status_code == 200:
@@ -128,7 +128,7 @@ def carregar_dados_liga():
         
     turno_atual = 2 if rodada_cartola > 19 else 1
     
-    # Rodada consolidada no CSV base
+    # Rodada exata que já está consolidada e inclusa no seu CSV
     RODADA_BASE_CSV = 20 
 
     # 2. Carrega o CSV base
@@ -182,10 +182,10 @@ def carregar_dados_liga():
             except:
                 pass
         
-        # LÓGICA DE SOMA REVISADA:
-        # Só soma a pontuação do Cartola se já for uma nova rodada (rodada_cartola > RODADA_BASE_CSV)
-        # OU se os jogos da nova rodada estiverem acontecendo ao vivo (status_mercado == 2)
-        if rodada_cartola > RODADA_BASE_CSV or status_mercado == 2:
+        # CORREÇÃO DA SOMA:
+        # Só soma a pontuação da API se a rodada do Cartola for MAIOR que a rodada do CSV (rodada_cartola > RODADA_BASE_CSV).
+        # Se for a mesma rodada (Rodada 20), mantém o Total exato do CSV para não duplicar os pontos!
+        if rodada_cartola > RODADA_BASE_CSV:
             total_acumulado = pontos_base_historico + pt_rodada
         else:
             total_acumulado = pontos_base_historico
