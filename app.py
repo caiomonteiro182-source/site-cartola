@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import requests
-import time
 import os
 
 # 1. Configuração da Página
@@ -15,7 +14,6 @@ st.set_page_config(
 # 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial)
 st.markdown("""
     <style>
-    /* Importando fonte gamer / moderna */
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
 
     /* Fundo Geral Escuro / Cyberpunk */
@@ -25,7 +23,7 @@ st.markdown("""
         font-family: 'Rajdhani', sans-serif;
     }
 
-    /* Cabeçalhos com efeito Neon */
+    /* Cabeçalhos Neon */
     h1 {
         font-family: 'Teko', sans-serif !important;
         font-size: 52px !important;
@@ -74,7 +72,7 @@ st.markdown("""
         text-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
     }
 
-    /* Estilização das Abas (Tabs) */
+    /* Estilização das Abas */
     button[data-baseweb="tab"] {
         background-color: rgba(15, 23, 42, 0.6) !important;
         color: #94a3b8 !important;
@@ -101,7 +99,6 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* Linha Divisória Neon */
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
@@ -109,29 +106,31 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Lista Oficial dos Times da Liga
+# 3. LISTA DOS TIMES DA LIGA
+# DICA: Substitua o 'id': None pelos números dos IDs dos times para atualização 100% instantânea sem busca
 TIMES_LEAGUE = [
-    ("Tupinambaranas Futebol Clube", "Vitor Geromini"),
-    ("Lockdown United", "Caio Monteiro"),
-    ("Budaibes FC", "Bruno Budaibes"),
-    ("Open de Corote FC", "Hermes Augusto"),
-    ("Burpee F.C.", "Helio Isayama"),
-    ("Toon Squad FC", "Vinicius Monteiro"),
-    ("Covrinthians FC", "Denis M. Covre"),
-    ("Bom Dcopus SPFC", "Gutenberg"),
-    ("CPR sport", "Cesar Postingel Ramo"),
-    ("Bueno team EC", "Marcelo Bueno"),
-    ("Red, Black and White", "Diego Covre"),
-    ("Tgramos82", "Thiago Ramos"),
-    ("promadalozofc", "madalozo"),
-    ("Pedroo SPFC", "Pedro Lopes"),
-    ("Mitador Campeão", "Barves")
+    {"nome": "Tupinambaranas Futebol Clube", "cartoleiro": "Vitor Geromini", "id": None},
+    {"nome": "Lockdown United", "cartoleiro": "Caio Monteiro", "id": None},
+    {"nome": "Budaibes FC", "cartoleiro": "Bruno Budaibes", "id": None},
+    {"nome": "Open de Corote FC", "cartoleiro": "Hermes Augusto", "id": None},
+    {"nome": "Burpee F.C.", "cartoleiro": "Helio Isayama", "id": None},
+    {"nome": "Toon Squad FC", "cartoleiro": "Vinicius Monteiro", "id": None},
+    {"nome": "Covrinthians FC", "cartoleiro": "Denis M. Covre", "id": None},
+    {"nome": "Bom Dcopus SPFC", "cartoleiro": "Gutenberg", "id": None},
+    {"nome": "CPR sport", "cartoleiro": "Cesar Postingel Ramo", "id": None},
+    {"nome": "Bueno team EC", "cartoleiro": "Marcelo Bueno", "id": None},
+    {"nome": "Red, Black and White", "cartoleiro": "Diego Covre", "id": None},
+    {"nome": "Tgramos82", "cartoleiro": "Thiago Ramos", "id": None},
+    {"nome": "promadalozofc", "cartoleiro": "madalozo", "id": None},
+    {"nome": "Pedroo SPFC", "cartoleiro": "Pedro Lopes", "id": None},
+    {"nome": "Mitador Campeão", "cartoleiro": "Barves", "id": None}
 ]
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=120)  # Recarrega a cada 2 minutos
 def carregar_dados_liga():
     headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
     
+    # Puxa status do mercado
     try:
         res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
         rodada_atual = res_m.json().get("rodada_atual", 0) if res_m.status_code == 200 else 20
@@ -140,7 +139,7 @@ def carregar_dados_liga():
         
     turno_atual = 2 if rodada_atual > 19 else 1
     
-    # Carrega base local como fallback inteligente
+    # Dicionário de pontuação base como retaguarda
     df_base_dict = {}
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -155,27 +154,32 @@ def carregar_dados_liga():
 
     lista_times = []
     
-    for nome_time, cartoleiro in TIMES_LEAGUE:
-        nome_limpo = nome_time.replace(",", "").replace(" and ", " ").replace("  ", " ").strip()
-        url_busca = "https://api.cartola.globo.com/times"
-        time_id = None
+    for t_item in TIMES_LEAGUE:
+        nome_time = t_item["nome"]
+        cartoleiro = t_item["cartoleiro"]
+        time_id = t_item["id"]
         
-        try:
-            res_b = requests.get(url_busca, params={"q": nome_limpo}, headers=headers, timeout=5)
-            if res_b.status_code == 200:
-                resultados = res_b.json()
-                lista_r = resultados if isinstance(resultados, list) else resultados.get("times", [])
-                for t in lista_r:
-                    if t.get("nome_cartola", "").lower() == cartoleiro.lower() or t.get("nome", "").lower() == nome_time.lower():
-                        time_id = t.get("time_id")
-                        break
-                if not time_id and len(lista_r) > 0:
-                    time_id = lista_r[0].get("time_id")
-        except:
-            pass
+        # Se não houver ID fixo definido, tenta buscar via API do Cartola
+        if not time_id:
+            nome_limpo = nome_time.replace(",", "").replace(" and ", " ").replace("  ", " ").strip()
+            url_busca = "https://api.cartola.globo.com/times"
+            try:
+                res_b = requests.get(url_busca, params={"q": nome_limpo}, headers=headers, timeout=5)
+                if res_b.status_code == 200:
+                    resultados = res_b.json()
+                    lista_r = resultados if isinstance(resultados, list) else resultados.get("times", [])
+                    for t in lista_r:
+                        if t.get("nome_cartola", "").lower() == cartoleiro.lower() or t.get("nome", "").lower() == nome_time.lower():
+                            time_id = t.get("time_id")
+                            break
+                    if not time_id and len(lista_r) > 0:
+                        time_id = lista_r[0].get("time_id")
+            except:
+                pass
 
         pt_rodada, pt_mes, pt_turno, pt_total_api = 0.0, 0.0, 0.0, 0.0
         
+        # Requisição direta do ID do time na Globo (Ao vivo)
         if time_id:
             try:
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
@@ -214,11 +218,10 @@ def carregar_dados_liga():
     
     return df, rodada_atual, turno_atual
 
-# --- CABEÇALHO DO SITE COM A LOGO ---
+# --- CABEÇALHO COM LOGO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
-    # Procura a logo em png ou jpg na pasta
     logo_path = None
     for ext in ["logo.jpg", "logo.png", "logo.jpeg"]:
         if os.path.exists(ext):
@@ -236,8 +239,14 @@ with col_title:
 
 st.divider()
 
-# Carregando Dados
-with st.spinner("⚡ Conectando aos servidores do Cartola FC..."):
+# Botão de Atualização Manual / F5
+col_status, col_btn = st.columns([4, 1])
+with col_btn:
+    if st.button("🔄 Atualizar Ao Vivo"):
+        st.cache_data.clear()
+        st.rerun()
+
+with st.spinner("⚡ Conectando ao vivo com o Cartola FC..."):
     df, rodada_atual, turno_atual = carregar_dados_liga()
 
 if not df.empty:
@@ -255,7 +264,7 @@ if not df.empty:
 
     st.write("")
 
-    # ABAS PRINCIPAIS
+    # ABAS
     tab1, tab2 = st.tabs(["🏆 Classificação Geral", "📊 Gráficos & Estatísticas"])
 
     with tab1:
@@ -292,4 +301,4 @@ if not df.empty:
         )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Conectado à API do Cartola FC.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Atualização automática conectada ao Cartola FC.")
