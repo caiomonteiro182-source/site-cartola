@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon
+# 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -106,11 +106,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=120)  # Recarrega a cada 2 minutos
+# 3. Função de Carregamento de Dados com Suporte ao CSV + IDs
+@st.cache_data(ttl=60)  # Recarrega dados da API a cada 60 segundos
 def carregar_dados_liga():
-    headers = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json"
+    }
     
-    # Status do mercado
+    # Busca status do mercado e rodada atual
     try:
         res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
         rodada_atual = res_m.json().get("rodada_atual", 0) if res_m.status_code == 200 else 20
@@ -119,7 +123,7 @@ def carregar_dados_liga():
         
     turno_atual = 2 if rodada_atual > 19 else 1
     
-    # 1. Lê a Base CSV
+    # 1. Carrega o CSV base com as pontuações históricas e a coluna ID
     df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -131,37 +135,30 @@ def carregar_dados_liga():
                 pass
 
     if df_base is None:
-        st.error("⚠️ O arquivo 'base_cartola_oficial.csv' não foi encontrado no GitHub!")
+        st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
         return pd.DataFrame(), rodada_atual, turno_atual
 
     lista_times = []
     
-    # 2. Varre time a time, busca no Cartola e SOMA com o CSV
-    for index, row in df_base.iterrows():
+    # 2. Varre cada linha do CSV e consulta a API da Globo pelo ID
+    for _, row in df_base.iterrows():
         nome_time = str(row["Time"]).strip()
         cartoleiro = str(row["Cartoleiro"]).strip()
         pontos_base_historico = float(row["Total"])
         
-        nome_limpo = nome_time.replace(",", "").replace(" and ", " ").replace("  ", " ").strip()
-        url_busca = "https://api.cartola.globo.com/times"
-        time_id = None
-        
-        try:
-            res_b = requests.get(url_busca, params={"q": nome_limpo}, headers=headers, timeout=5)
-            if res_b.status_code == 200:
-                resultados = res_b.json()
-                lista_r = resultados if isinstance(resultados, list) else resultados.get("times", [])
-                for t in lista_r:
-                    if t.get("nome_cartola", "").lower() == cartoleiro.lower() or t.get("nome", "").lower() == nome_time.lower():
-                        time_id = t.get("time_id")
-                        break
-                if not time_id and len(lista_r) > 0:
-                    time_id = lista_r[0].get("time_id")
-        except:
-            pass
+        # Pega a coluna ID (trata caso a coluna venha como int, float ou string)
+        time_id = row.get("ID", None)
+        if pd.notna(time_id):
+            try:
+                time_id = int(time_id)
+            except:
+                time_id = None
+        else:
+            time_id = None
 
         pt_rodada, pt_mes, pt_turno = 0.0, 0.0, 0.0
         
+        # Faz requisição direta na API oficial usando o ID do time
         if time_id:
             try:
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
@@ -172,10 +169,12 @@ def carregar_dados_liga():
                         pt_rodada = float(p_raw.get("rodada", 0))
                         pt_mes = float(p_raw.get("mes", 0))
                         pt_turno = float(p_raw.get("turno", 0))
+                    elif isinstance(p_raw, (int, float)):
+                        pt_rodada = float(p_raw)
             except:
                 pass
         
-        # MÁGICA: Total Geral = Pontos do CSV (Rodadas 1-20) + Pontos da Rodada Atual do Cartola
+        # Cálculo final: Base Fixa + Pontos em Tempo Real da Rodada
         total_acumulado = pontos_base_historico + pt_rodada
         
         lista_times.append({
@@ -198,7 +197,7 @@ def carregar_dados_liga():
     
     return df, rodada_atual, turno_atual
 
-# --- CABEÇALHO ---
+# --- 4. CABEÇALHO & LOGO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -226,11 +225,12 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-with st.spinner("⚡ Carregando base histórica e conectando ao Cartola FC..."):
+with st.spinner("⚡ Conectando ao Cartola FC e sincronizando pontos ao vivo..."):
     df, rodada_atual, turno_atual = carregar_dados_liga()
 
+# --- 5. VISUALIZAÇÃO E TABELAS ---
 if not df.empty:
-    # METRIC CARDS
+    # KPI METRIC CARDS
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Última Rodada", ascending=False).iloc[0]
     lider_mes = df.sort_values(by="Mês", ascending=False).iloc[0]
@@ -244,13 +244,13 @@ if not df.empty:
 
     st.write("")
 
-    # ABAS PRINCIPAIS
+    # ABAS
     tab1, tab2 = st.tabs(["🏆 Classificação Geral", "📊 Gráficos & Estatísticas"])
 
     with tab1:
         st.subheader("⚡ Tabela de Posições da Liga")
         
-        # BOTÕES DE ALTERNÂNCIA (Geral vs Última Rodada)
+        # Seleção entre Geral x Última Rodada
         visao = st.radio(
             "Selecione a visualização:",
             ["Classificação Geral (Total Acumulado)", "Pontuação da Última Rodada"],
@@ -266,7 +266,6 @@ if not df.empty:
                 hide_index=True
             )
         else:
-            # Tabela ordenada pelo desempenho da última rodada
             df_rodada = df.sort_values(by="Última Rodada", ascending=False).reset_index(drop=True)
             df_rodada["Pos. Rodada"] = df_rodada.index + 1
             st.dataframe(
@@ -291,7 +290,7 @@ if not df.empty:
         st.divider()
 
         st.subheader("🔥 Pontuação Total Acumulada")
-        st.caption("Visão geral do volume total de pontos acumulados.")
+        st.caption("Visão geral do volume total de pontos acumulados no campeonato.")
         
         st.bar_chart(
             df.sort_values(by="Total", ascending=True),
@@ -301,4 +300,4 @@ if not df.empty:
         )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Base Sincronizada com o Cartola FC.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} • {turno_atual}º Turno | Sincronizado automaticamente via API Cartola FC.")
