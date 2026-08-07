@@ -208,7 +208,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Função de Carregamento Ultra-Rápido (Com Cache Inteligente em Lote)
+# 3. Função de Carregamento Ultra-Rápido com Garantia de Valorização
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -250,6 +250,7 @@ def carregar_dados_liga():
 
     lista_times = []
     rodada_penultima = rodada_cartola - 1 if status_mercado == 2 else rodada_cartola - 2
+    rodada_ultima_consolidada = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
     
     for _, row in df_base.iterrows():
         nome_time = str(row["Time"]).strip()
@@ -307,7 +308,16 @@ def carregar_dados_liga():
                         if val_api is not None and float(val_api) != 0.0:
                             valorizacao_rodada = float(val_api)
 
-                # Busca rápida da rodada penúltima
+                # Busca da rodada consolidada/anterior para somar as variações dos atletas se ainda estiver zerado
+                if valorizacao_rodada == 0.0 and rodada_ultima_consolidada >= 1:
+                    res_at = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
+                    if res_at.status_code == 200:
+                        dados_at = res_at.json()
+                        atletas = dados_at.get("atletas", [])
+                        if atletas:
+                            valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
+
+                # Busca rápida da rodada penúltima para comparação
                 if rodada_penultima >= 1:
                     res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
@@ -433,7 +443,6 @@ if not df.empty:
     
     time_selecionado = st.selectbox("Selecione um time para ver a análise completa:", df["Time"].tolist())
     
-    # Processamento em memória (Instantâneo)
     dados_time = df[df["Time"] == time_selecionado].iloc[0]
     media_pontos_liga = df["Pontos Ganhos (Última Rodada)"].mean()
     media_patrimonio_liga = df["Patrimônio (C$)"].mean()
