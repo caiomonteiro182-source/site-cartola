@@ -12,19 +12,86 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + Painel Fixo de Confrontos
+# MAPA DE ESCUDOS OFICIAIS COLORIDOS (GE / GLOBO CDN)
+ESCUDOS_GE = {
+    "ATHLETICO-PR": "https://s.sde.globo.com/media/organizations/2019/09/09/Athletico-PR.svg",
+    "ATLÉTICO-PR": "https://s.sde.globo.com/media/organizations/2019/09/09/Athletico-PR.svg",
+    "CAP": "https://s.sde.globo.com/media/organizations/2019/09/09/Athletico-PR.svg",
+    
+    "ATLÉTICO-MG": "https://s.sde.globo.com/media/organizations/2018/03/10/atletico-mg.svg",
+    "ATLETICO-MG": "https://s.sde.globo.com/media/organizations/2018/03/10/atletico-mg.svg",
+    
+    "BAHIA": "https://s.sde.globo.com/media/organizations/2018/03/11/bahia.svg",
+    
+    "BOTAFOGO": "https://s.sde.globo.com/media/organizations/2019/02/04/botafogo.svg",
+    
+    "RED BULL BRAGANTINO": "https://s.sde.globo.com/media/organizations/2020/01/01/bragantino.svg",
+    "BRAGANTINO": "https://s.sde.globo.com/media/organizations/2020/01/01/bragantino.svg",
+    "RBB": "https://s.sde.globo.com/media/organizations/2020/01/01/bragantino.svg",
+    
+    "CORINTHIANS": "https://s.sde.globo.com/media/organizations/2019/09/30/Corinthians.svg",
+    "COR": "https://s.sde.globo.com/media/organizations/2019/09/30/Corinthians.svg",
+    
+    "CRUZEIRO": "https://s.sde.globo.com/media/organizations/2021/02/13/cruzeiro.svg",
+    
+    "FLAMENGO": "https://s.sde.globo.com/media/organizations/2018/04/09/Flamengo.svg",
+    "FLA": "https://s.sde.globo.com/media/organizations/2018/04/09/Flamengo.svg",
+    
+    "FLUMINENSE": "https://s.sde.globo.com/media/organizations/2018/03/11/fluminense.svg",
+    "FLU": "https://s.sde.globo.com/media/organizations/2018/03/11/fluminense.svg",
+    
+    "GRÊMIO": "https://s.sde.globo.com/media/organizations/2018/03/12/gremio.svg",
+    "GREMIO": "https://s.sde.globo.com/media/organizations/2018/03/12/gremio.svg",
+    
+    "INTERNACIONAL": "https://s.sde.globo.com/media/organizations/2018/03/11/internacional.svg",
+    "INT": "https://s.sde.globo.com/media/organizations/2018/03/11/internacional.svg",
+    
+    "MIRASSOL": "https://s.sde.globo.com/media/organizations/2020/01/18/mirassol.svg",
+    "MIR": "https://s.sde.globo.com/media/organizations/2020/01/18/mirassol.svg",
+    
+    "PALMEIRAS": "https://s.sde.globo.com/media/organizations/2018/03/11/palmeiras.svg",
+    "PAL": "https://s.sde.globo.com/media/organizations/2018/03/11/palmeiras.svg",
+    
+    "SANTOS": "https://s.sde.globo.com/media/organizations/2018/03/12/santos.svg",
+    "SAN": "https://s.sde.globo.com/media/organizations/2018/03/12/santos.svg",
+    
+    "SÃO PAULO": "https://s.sde.globo.com/media/organizations/2018/03/11/sao-paulo.svg",
+    "SAO PAULO": "https://s.sde.globo.com/media/organizations/2018/03/11/sao-paulo.svg",
+    "SAO": "https://s.sde.globo.com/media/organizations/2018/03/11/sao-paulo.svg",
+    
+    "VASCO": "https://s.sde.globo.com/media/organizations/2021/09/04/vasco.svg",
+    "VAS": "https://s.sde.globo.com/media/organizations/2021/09/04/vasco.svg",
+    
+    "VITÓRIA": "https://s.sde.globo.com/media/organizations/2018/03/11/vitoria.svg",
+    "VITORIA": "https://s.sde.globo.com/media/organizations/2018/03/11/vitoria.svg",
+    "VIT": "https://s.sde.globo.com/media/organizations/2018/03/11/vitoria.svg",
+    
+    "FORTALEZA": "https://s.sde.globo.com/media/organizations/2018/03/10/fortaleza.svg",
+    "CUIABÁ": "https://s.sde.globo.com/media/organizations/2018/12/26/cuiaba.svg",
+    "JUVENTUDE": "https://s.sde.globo.com/media/organizations/2021/04/29/juventud.svg",
+    "CRB": "https://s.sde.globo.com/media/organizations/2018/03/11/crb.svg",
+    "CHAPECOENSE": "https://s.sde.globo.com/media/organizations/2021/06/20/chapecoense.svg",
+    "CORITIBA": "https://s.sde.globo.com/media/organizations/2018/03/11/coritiba.svg",
+    "REMO": "https://s.sde.globo.com/media/organizations/2018/03/10/remo.svg"
+}
+
+def obter_escudo_oficial(nome_clube, e_cartola=""):
+    nome_clean = nome_clube.upper().strip()
+    if nome_clean in ESCUDOS_GE:
+        return ESCUDOS_GE[nome_clean]
+    return e_cartola
+
+# 2. Estilização Cyberpunk Neon + Painel Fixo Corrigido
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
 
-    /* Fundo Geral Escuro / Cyberpunk */
     .stApp {
         background: radial-gradient(circle at top center, #1e0b36 0%, #0a0813 60%, #030206 100%);
         color: #f1f5f9;
         font-family: 'Rajdhani', sans-serif;
     }
 
-    /* Cabeçalhos Neon */
     h1 {
         font-family: 'Teko', sans-serif !important;
         font-size: 52px !important;
@@ -44,7 +111,6 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* CONTÊINER ALINHADO PARA O TÍTULO + TEMPORIZADOR */
     .header-title-container {
         display: flex;
         align-items: center;
@@ -52,7 +118,6 @@ st.markdown("""
         flex-wrap: wrap;
     }
 
-    /* ESTILO DO BANNER CONTADOR AO LADO DO TÍTULO */
     .market-timer-inline-open {
         background: #ccff00;
         color: #0a0813;
@@ -85,7 +150,6 @@ st.markdown("""
         gap: 6px;
     }
 
-    /* Estilo do Link Oficial da Liga */
     .link-liga {
         display: inline-block;
         color: #00f2ff !important;
@@ -101,14 +165,7 @@ st.markdown("""
         transition: all 0.3s ease;
     }
 
-    .link-liga:hover {
-        background: rgba(0, 242, 255, 0.25);
-        border-color: #00f2ff;
-        box-shadow: 0 0 12px rgba(0, 242, 255, 0.6);
-        color: #ffffff !important;
-    }
-
-    /* PAINEL FIXO DE JOGOS DENTRO DO TOPO DA PÁGINA */
+    /* PAINEL FIXO DE JOGOS */
     .matches-panel-container {
         width: 100%;
         background: rgba(10, 8, 19, 0.85);
@@ -126,7 +183,7 @@ st.markdown("""
         color: #00f2ff;
         text-transform: uppercase;
         letter-spacing: 1px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -136,10 +193,9 @@ st.markdown("""
         display: flex;
         gap: 12px;
         overflow-x: auto;
-        padding-bottom: 6px;
+        padding-bottom: 8px;
     }
 
-    /* Scrollbar estilizada para o painel de jogos */
     .matches-grid::-webkit-scrollbar {
         height: 6px;
     }
@@ -153,23 +209,23 @@ st.markdown("""
         background: rgba(18, 12, 38, 0.8);
         border: 1px solid rgba(168, 85, 247, 0.3);
         border-radius: 8px;
-        padding: 8px 14px;
+        padding: 10px 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
-        min-width: 170px;
+        gap: 12px;
+        min-width: 180px;
     }
 
     .match-card img {
-        width: 30px;
-        height: 30px;
+        width: 36px;
+        height: 36px;
         object-fit: contain;
     }
 
     .match-score {
         font-family: 'Teko', sans-serif;
-        font-size: 20px;
+        font-size: 22px;
         font-weight: bold;
         color: #ffffff;
         letter-spacing: 1px;
@@ -230,7 +286,6 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* Cartões de Métricas (KPIs) Neons */
     div[data-testid="stMetric"] {
         background: rgba(18, 12, 38, 0.75);
         border: 2px solid #a855f7;
@@ -239,7 +294,6 @@ st.markdown("""
         border-radius: 14px;
     }
 
-    /* Estilização das Abas */
     button[data-baseweb="tab"] {
         background-color: rgba(15, 23, 42, 0.6) !important;
         color: #94a3b8 !important;
@@ -258,7 +312,6 @@ st.markdown("""
         box-shadow: 0 0 12px rgba(0, 242, 255, 0.5);
     }
 
-    /* Tabelas */
     div[data-testid="stDataFrame"] {
         border: 1px solid #a855f7;
         border-radius: 12px;
@@ -296,7 +349,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Função de Carregamento Ultra-Rápido da Liga
+# 3. Carregamento dos dados da Liga
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -439,7 +492,7 @@ def carregar_dados_liga():
     
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 4. Função para calcular o temporizador do mercado
+# 4. Contador de Mercado
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -472,7 +525,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Função para extrair os confrontos com Escudos Oficiais
+# 5. Busca de partidas com Escudos do GE (Globo Esporte)
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -490,8 +543,22 @@ def carregar_partidas_com_escudos(num_rodada):
                 clube_casa = clubes.get(id_casa, {})
                 clube_vis = clubes.get(id_vis, {})
                 
-                escudo_casa = clube_casa.get("escudos", {}).get("45x45", "")
-                escudo_vis = clube_vis.get("escudos", {}).get("45x45", "")
+                nome_casa = clube_casa.get("nome", "").upper()
+                nome_vis = clube_vis.get("nome", "").upper()
+                
+                sigla_casa = clube_casa.get("sigla", nome_casa)
+                sigla_vis = clube_vis.get("sigla", nome_vis)
+                
+                escudo_cartola_casa = clube_casa.get("escudos", {}).get("60x60", "")
+                escudo_cartola_vis = clube_vis.get("escudos", {}).get("60x60", "")
+                
+                escudo_casa = obter_escudo_oficial(nome_casa, escudo_cartola_casa)
+                if escudo_casa == escudo_cartola_casa:
+                    escudo_casa = obter_escudo_oficial(sigla_casa, escudo_cartola_casa)
+                    
+                escudo_vis = obter_escudo_oficial(nome_vis, escudo_cartola_vis)
+                if escudo_vis == escudo_cartola_vis:
+                    escudo_vis = obter_escudo_oficial(sigla_vis, escudo_cartola_vis)
                 
                 placar_casa = p.get("placar_oficial_mandante")
                 placar_vis = p.get("placar_oficial_visitante")
@@ -499,8 +566,8 @@ def carregar_partidas_com_escudos(num_rodada):
                 jogos.append({
                     "escudo_casa": escudo_casa,
                     "escudo_vis": escudo_vis,
-                    "nome_casa": clube_casa.get("nome", "").upper(),
-                    "nome_vis": clube_vis.get("nome", "").upper(),
+                    "nome_casa": nome_casa,
+                    "nome_vis": nome_vis,
                     "placar_casa": placar_casa,
                     "placar_vis": placar_vis
                 })
@@ -509,7 +576,7 @@ def carregar_partidas_com_escudos(num_rodada):
         pass
     return []
 
-# 6. Função para carregar a base de vencedores do mês
+# 6. Carregar Vencedores do Mês
 @st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
@@ -526,7 +593,7 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 7. PAINEL FIXO DE JOGOS COM ESCUDOS OFICIAIS ---
+# --- 7. PAINEL FIXO COM ESCUDOS DO GE ---
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
@@ -537,13 +604,7 @@ if lista_partidas:
         else:
             placar_str = '<div class="match-vs">VS</div>'
             
-        cards_html += f"""
-        <div class="match-card">
-            <img src="{j['escudo_casa']}" title="{j['nome_casa']}">
-            {placar_str}
-            <img src="{j['escudo_vis']}" title="{j['nome_vis']}">
-        </div>
-        """
+        cards_html += f"""<div class="match-card"><img src="{j['escudo_casa']}" title="{j['nome_casa']}">{placar_str}<img src="{j['escudo_vis']}" title="{j['nome_vis']}"></div>"""
 
     st.markdown(f"""
         <div class="matches-panel-container">
@@ -556,7 +617,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 8. CABEÇALHO, LOGO, TÍTULO + TEMPORIZADOR NA FRENTE ---
+# --- 8. CABEÇALHO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
