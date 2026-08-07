@@ -475,9 +475,9 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
 
-# --- 7. LETREIRO NEON ---
+# --- 7. LETREIRO NEON (Ícone alterado para Bola de Futebol ⚽) ---
 status_tag = "🔴 AO VIVO" if status_mercado == 2 else "🟢 MERCADO ABERTO"
-texto_ticker = f"⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE"
+texto_ticker = f"⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]: {jogos_brasileirao} • ⚽ BLACK GUYS LEAGUE"
 
 st.markdown(f'<div class="ticker-container"><div class="ticker-text">{texto_ticker}</div></div>', unsafe_allow_html=True)
 
