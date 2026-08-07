@@ -12,149 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# MAPA COMPLETO DE ESCUDOS OFICIAIS GE (FORMATO PNG - ALTA RESOLUÇÃO)
-ESCUDOS_GE_PNG = {
-    # Nomes e Siglas
-    "ATHLETICO-PR": "https://s.sde.globo.com/media/organizations/2019/09/09/Athletico-PR.png",
-    "ATLÉTICO-PR": "https://s.sde.globo.com/media/organizations/2019/09/09/Athletico-PR.png",
-    "CAP": "https://s.sde.globo.com/media/organizations/2019/09/09/Athletico-PR.png",
-    
-    "ATLÉTICO-MG": "https://s.sde.globo.com/media/organizations/2018/03/10/atletico-mg.png",
-    "ATLETICO-MG": "https://s.sde.globo.com/media/organizations/2018/03/10/atletico-mg.png",
-    "CAM": "https://s.sde.globo.com/media/organizations/2018/03/10/atletico-mg.png",
-    
-    "BAHIA": "https://s.sde.globo.com/media/organizations/2018/03/11/bahia.png",
-    "BAH": "https://s.sde.globo.com/media/organizations/2018/03/11/bahia.png",
-    
-    "BOTAFOGO": "https://s.sde.globo.com/media/organizations/2019/02/04/botafogo.png",
-    "BOT": "https://s.sde.globo.com/media/organizations/2019/02/04/botafogo.png",
-    
-    "RED BULL BRAGANTINO": "https://s.sde.globo.com/media/organizations/2020/01/01/bragantino.png",
-    "BRAGANTINO": "https://s.sde.globo.com/media/organizations/2020/01/01/bragantino.png",
-    "RBB": "https://s.sde.globo.com/media/organizations/2020/01/01/bragantino.png",
-    
-    "CORINTHIANS": "https://s.sde.globo.com/media/organizations/2019/09/30/Corinthians.png",
-    "COR": "https://s.sde.globo.com/media/organizations/2019/09/30/Corinthians.png",
-    
-    "CRUZEIRO": "https://s.sde.globo.com/media/organizations/2021/02/13/cruzeiro.png",
-    "CRU": "https://s.sde.globo.com/media/organizations/2021/02/13/cruzeiro.png",
-    
-    "FLAMENGO": "https://s.sde.globo.com/media/organizations/2018/04/09/Flamengo.png",
-    "FLA": "https://s.sde.globo.com/media/organizations/2018/04/09/Flamengo.png",
-    
-    "FLUMINENSE": "https://s.sde.globo.com/media/organizations/2018/03/11/fluminense.png",
-    "FLU": "https://s.sde.globo.com/media/organizations/2018/03/11/fluminense.png",
-    
-    "GRÊMIO": "https://s.sde.globo.com/media/organizations/2018/03/12/gremio.png",
-    "GREMIO": "https://s.sde.globo.com/media/organizations/2018/03/12/gremio.png",
-    "GRE": "https://s.sde.globo.com/media/organizations/2018/03/12/gremio.png",
-    
-    "INTERNACIONAL": "https://s.sde.globo.com/media/organizations/2018/03/11/internacional.png",
-    "INT": "https://s.sde.globo.com/media/organizations/2018/03/11/internacional.png",
-    
-    "MIRASSOL": "https://s.sde.globo.com/media/organizations/2020/01/18/mirassol.png",
-    "MIR": "https://s.sde.globo.com/media/organizations/2020/01/18/mirassol.png",
-    
-    "PALMEIRAS": "https://s.sde.globo.com/media/organizations/2018/03/11/palmeiras.png",
-    "PAL": "https://s.sde.globo.com/media/organizations/2018/03/11/palmeiras.png",
-    
-    "SANTOS": "https://s.sde.globo.com/media/organizations/2018/03/12/santos.png",
-    "SAN": "https://s.sde.globo.com/media/organizations/2018/03/12/santos.png",
-    
-    "SÃO PAULO": "https://s.sde.globo.com/media/organizations/2018/03/11/sao-paulo.png",
-    "SAO PAULO": "https://s.sde.globo.com/media/organizations/2018/03/11/sao-paulo.png",
-    "SAO": "https://s.sde.globo.com/media/organizations/2018/03/11/sao-paulo.png",
-    
-    "VASCO": "https://s.sde.globo.com/media/organizations/2021/09/04/vasco.png",
-    "VAS": "https://s.sde.globo.com/media/organizations/2021/09/04/vasco.png",
-    
-    "VITÓRIA": "https://s.sde.globo.com/media/organizations/2018/03/11/vitoria.png",
-    "VITORIA": "https://s.sde.globo.com/media/organizations/2018/03/11/vitoria.png",
-    "VIT": "https://s.sde.globo.com/media/organizations/2018/03/11/vitoria.png",
-    
-    "FORTALEZA": "https://s.sde.globo.com/media/organizations/2018/03/10/fortaleza.png",
-    "FOR": "https://s.sde.globo.com/media/organizations/2018/03/10/fortaleza.png",
-    
-    "CUIABÁ": "https://s.sde.globo.com/media/organizations/2018/12/26/cuiaba.png",
-    "CUIABA": "https://s.sde.globo.com/media/organizations/2018/12/26/cuiaba.png",
-    "CUI": "https://s.sde.globo.com/media/organizations/2018/12/26/cuiaba.png",
-    
-    "JUVENTUDE": "https://s.sde.globo.com/media/organizations/2021/04/29/juventud.png",
-    "JUV": "https://s.sde.globo.com/media/organizations/2021/04/29/juventud.png",
-    
-    "CRB": "https://s.sde.globo.com/media/organizations/2018/03/11/crb.png",
-    
-    "CHAPECOENSE": "https://s.sde.globo.com/media/organizations/2021/06/20/chapecoense.png",
-    "CHA": "https://s.sde.globo.com/media/organizations/2021/06/20/chapecoense.png",
-    
-    "CORITIBA": "https://s.sde.globo.com/media/organizations/2018/03/11/coritiba.png",
-    "CFC": "https://s.sde.globo.com/media/organizations/2018/03/11/coritiba.png",
-    
-    "REMO": "https://s.sde.globo.com/media/organizations/2018/03/10/remo.png",
-    "REM": "https://s.sde.globo.com/media/organizations/2018/03/10/remo.png",
-    
-    "PAYASANDU": "https://s.sde.globo.com/media/organizations/2018/03/10/paysandu.png",
-    "PAY": "https://s.sde.globo.com/media/organizations/2018/03/10/paysandu.png",
-    
-    "AMÉRICA-MG": "https://s.sde.globo.com/media/organizations/2018/03/11/america-mg.png",
-    "AMÉRICA MG": "https://s.sde.globo.com/media/organizations/2018/03/11/america-mg.png",
-    "AME": "https://s.sde.globo.com/media/organizations/2018/03/11/america-mg.png",
-    
-    "GOIÁS": "https://s.sde.globo.com/media/organizations/2018/03/11/goias.png",
-    "GOIAS": "https://s.sde.globo.com/media/organizations/2018/03/11/goias.png",
-    "GOI": "https://s.sde.globo.com/media/organizations/2018/03/11/goias.png",
-    
-    "CEARÁ": "https://s.sde.globo.com/media/organizations/2019/10/10/ceara.png",
-    "CEARA": "https://s.sde.globo.com/media/organizations/2019/10/10/ceara.png",
-    "CEA": "https://s.sde.globo.com/media/organizations/2019/10/10/ceara.png",
-    
-    "SPORT": "https://s.sde.globo.com/media/organizations/2018/03/11/sport.png",
-    "SPT": "https://s.sde.globo.com/media/organizations/2018/03/11/sport.png",
-    
-    "AVAÍ": "https://s.sde.globo.com/media/organizations/2018/03/11/avai.png",
-    "AVAI": "https://s.sde.globo.com/media/organizations/2018/03/11/avai.png",
-    "AVA": "https://s.sde.globo.com/media/organizations/2018/03/11/avai.png",
-    
-    "PONTE PRETA": "https://s.sde.globo.com/media/organizations/2018/03/11/ponte-preta.png",
-    "PON": "https://s.sde.globo.com/media/organizations/2018/03/11/ponte-preta.png",
-    
-    "GUARANI": "https://s.sde.globo.com/media/organizations/2018/03/11/guarani.png",
-    "GUA": "https://s.sde.globo.com/media/organizations/2018/03/11/guarani.png",
-    
-    "VILA NOVA": "https://s.sde.globo.com/media/organizations/2018/03/11/vila-nova.png",
-    "VIL": "https://s.sde.globo.com/media/organizations/2018/03/11/vila-nova.png",
-    
-    "NOVORIZONTINO": "https://s.sde.globo.com/media/organizations/2019/01/16/novorizontino.png",
-    "NOV": "https://s.sde.globo.com/media/organizations/2019/01/16/novorizontino.png",
-    
-    "AMAZONAS": "https://s.sde.globo.com/media/organizations/2020/01/22/amazonas.png",
-    "AMA": "https://s.sde.globo.com/media/organizations/2020/01/22/amazonas.png",
-    
-    "BOTAFOGO-SP": "https://s.sde.globo.com/media/organizations/2018/03/11/botafogo-sp.png",
-    "BSP": "https://s.sde.globo.com/media/organizations/2018/03/11/botafogo-sp.png",
-    
-    "OPERÁRIO-PR": "https://s.sde.globo.com/media/organizations/2018/11/05/operario-pr.png",
-    "OPE": "https://s.sde.globo.com/media/organizations/2018/11/05/operario-pr.png",
-    
-    "BRUSQUE": "https://s.sde.globo.com/media/organizations/2020/01/16/brusque.png",
-    "BRU": "https://s.sde.globo.com/media/organizations/2020/01/16/brusque.png",
-    
-    "ITUANO": "https://s.sde.globo.com/media/organizations/2018/03/11/ituano.png",
-    "ITU": "https://s.sde.globo.com/media/organizations/2018/03/11/ituano.png"
-}
-
-def obter_escudo_oficial_png(nome_clube, sigla_clube):
-    nome_norm = nome_clube.upper().strip()
-    sigla_norm = sigla_clube.upper().strip()
-    
-    if nome_norm in ESCUDOS_GE_PNG:
-        return ESCUDOS_GE_PNG[nome_norm]
-    if sigla_norm in ESCUDOS_GE_PNG:
-        return ESCUDOS_GE_PNG[sigla_norm]
-        
-    return "https://s.sde.globo.com/media/organizations/2018/03/11/palmeiras.png"
-
-# 2. Estilização Cyberpunk Neon + Painel Fixo Corrigido
+# 2. Estilização Cyberpunk Neon + Painel Fixo de Confrontos
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -293,6 +151,8 @@ st.markdown("""
     .match-card img {
         width: 38px !important;
         height: 38px !important;
+        max-width: 38px !important;
+        max-height: 38px !important;
         object-fit: contain !important;
         display: block !important;
     }
@@ -314,7 +174,6 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* CARD ESTILO PAINEL DE TIME */
     .box-m1 {
         background: rgba(10, 8, 19, 0.85);
         border-radius: 12px;
@@ -599,7 +458,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Busca de partidas com Escudos PNG do GE
+# 5. Busca de partidas com Escudos da API do Cartola (100% livres de bloqueio CORS)
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -620,11 +479,12 @@ def carregar_partidas_com_escudos(num_rodada):
                 nome_casa = clube_casa.get("nome", "").upper()
                 nome_vis = clube_vis.get("nome", "").upper()
                 
-                sigla_casa = clube_casa.get("sigla", nome_casa)
-                sigla_vis = clube_vis.get("sigla", nome_vis)
+                escudos_casa = clube_casa.get("escudos", {})
+                escudos_vis = clube_vis.get("escudos", {})
                 
-                escudo_casa = obter_escudo_oficial_png(nome_casa, sigla_casa)
-                escudo_vis = obter_escudo_oficial_png(nome_vis, sigla_vis)
+                # Seleciona preferencialmente a melhor resolução fornecida pela API
+                escudo_casa = escudos_casa.get("60x60") or escudos_casa.get("45x45") or escudos_casa.get("30x30") or ""
+                escudo_vis = escudos_vis.get("60x60") or escudos_vis.get("45x45") or escudos_vis.get("30x30") or ""
                 
                 placar_casa = p.get("placar_oficial_mandante")
                 placar_vis = p.get("placar_oficial_visitante")
@@ -659,7 +519,7 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 7. PAINEL FIXO COM ESCUDOS OFICIAIS PNG CORRIGIDOS ---
+# --- 7. PAINEL FIXO COM ESCUDOS OFICIAIS DA API CARTOLA FC ---
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
