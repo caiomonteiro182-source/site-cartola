@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + CSS Responsivo (Mobile First)
+# 2. Estilização Cyberpunk Neon + Regra de Alinhamento Condicional (Celular = Centro | Computador = Esquerda)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -287,24 +287,32 @@ st.markdown("""
         margin: 15px 0 !important;
     }
 
-    /* REGRAS MOBILE (CENTRALIZAÇÃO DA LOGO E TEXTOS) */
+    /* --- REGRAS EXCLUSIVAS PARA DISPOSITIVOS MÓVEIS (DISPARADAS APENAS NO CELULAR) --- */
     @media (max-width: 768px) {
+        /* Força a coluna do cabeçalho a se comportar como bloco centralizado no celular */
         div[data-testid="stColumn"]:first-child {
             display: flex !important;
-            justify-content: center !important;
+            flex-direction: column !important;
             align-items: center !important;
+            justify-content: center !important;
             text-align: center !important;
             width: 100% !important;
         }
 
+        /* Centraliza a imagem da logo exclusivamente no celular */
         div[data-testid="stImage"] {
             display: flex !important;
             justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
             margin: 0 auto 10px auto !important;
+            text-align: center !important;
         }
 
-        div[data-testid="stImage"] img {
-            margin: 0 auto !important;
+        div[data-testid="stImage"] > img {
+            display: block !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
         }
 
         h1 {
@@ -332,6 +340,7 @@ st.markdown("""
 
         .header-col-wrapper {
             text-align: center;
+            width: 100%;
         }
 
         .link-liga {
@@ -532,7 +541,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Busca de partidas e escudos direto da API do Cartola FC
+# 5. Busca de partidas e escudos da API do Cartola FC
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -556,7 +565,6 @@ def carregar_partidas_com_escudos(num_rodada):
                 escudos_casa = clube_casa.get("escudos", {})
                 escudos_vis = clube_vis.get("escudos", {})
                 
-                # Puxa o melhor PNG fornecido pela API do Cartola
                 escudo_casa = escudos_casa.get("60x60") or escudos_casa.get("45x45") or escudos_casa.get("30x30") or ""
                 escudo_vis = escudos_vis.get("60x60") or escudos_vis.get("45x45") or escudos_vis.get("30x30") or ""
                 
@@ -626,7 +634,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 8. CABEÇALHO RESPONSIVO ---
+# --- 8. CABEÇALHO COM LOGO CONDICIONAL (CENTRALIZADA NO CELULAR / ESQUERDA NO COMPUTADOR) ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
