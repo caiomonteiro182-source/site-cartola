@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + Cards Customizados
+# 2. Estilização Cyberpunk Neon
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -208,24 +208,16 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-@st.cache_data(ttl=15)
-def obter_pontuados_ao_vivo():
-    try:
-        res = requests.get("https://api.cartola.globo.com/atleta/pontuados", headers=HEADERS, timeout=5)
-        if res.status_code == 200:
-            dados = res.json()
-            return dados.get("atletas", {})
-    except:
-        pass
-    return {}
-
-# 3. Função de Carregamento de Dados da Liga
-@st.cache_data(ttl=30)
+# 3. Função de Carregamento Ultra-Rápido (Com Cache Inteligente em Lote)
+@st.cache_data(ttl=120)
 def carregar_dados_liga():
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
     rodada_cartola = 20
     status_mercado = 1 
     try:
-        res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=HEADERS, timeout=5)
+        res_m = session.get("https://api.cartola.globo.com/mercado/status", timeout=4)
         if res_m.status_code == 200:
             dados_m = res_m.json()
             rodada_cartola = dados_m.get("rodada_atual", 20)
@@ -249,9 +241,15 @@ def carregar_dados_liga():
 
     atletas_ao_vivo = {}
     if status_mercado == 2:
-        atletas_ao_vivo = obter_pontuados_ao_vivo()
+        try:
+            res_av = session.get("https://api.cartola.globo.com/atleta/pontuados", timeout=4)
+            if res_av.status_code == 200:
+                atletas_ao_vivo = res_av.json().get("atletas", {})
+        except:
+            pass
 
     lista_times = []
+    rodada_penultima = rodada_cartola - 1 if status_mercado == 2 else rodada_cartola - 2
     
     for _, row in df_base.iterrows():
         nome_time = str(row["Time"]).strip()
@@ -259,12 +257,9 @@ def carregar_dados_liga():
         pontos_base_historico = float(row["Total"])
         
         time_id = row.get("ID", None)
-        if pd.notna(time_id):
-            try:
-                time_id = int(time_id)
-            except:
-                time_id = None
-        else:
+        try:
+            time_id = int(time_id) if pd.notna(time_id) else None
+        except:
             time_id = None
 
         pt_rodada = 0.0
@@ -274,7 +269,7 @@ def carregar_dados_liga():
         
         if time_id:
             try:
-                res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=HEADERS, timeout=5)
+                res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     patrimonio = float(dados.get("patrimonio", 100.0))
@@ -311,21 +306,12 @@ def carregar_dados_liga():
                         val_api = dados.get("valorizacao", 0.0)
                         if val_api is not None and float(val_api) != 0.0:
                             valorizacao_rodada = float(val_api)
-                        else:
-                            rodada_alvo = rodada_cartola - 1
-                            res_at = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_alvo}", headers=HEADERS, timeout=5)
-                            if res_at.status_code == 200:
-                                dados_at = res_at.json()
-                                atletas = dados_at.get("atletas", [])
-                                if atletas:
-                                    valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
 
-                rodada_penultima = rodada_cartola - 1 if status_mercado == 2 else rodada_cartola - 2
+                # Busca rápida da rodada penúltima
                 if rodada_penultima >= 1:
-                    res_ant = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", headers=HEADERS, timeout=5)
+                    res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
-                        dados_ant = res_ant.json()
-                        pt_rodada_anterior = float(dados_ant.get("pontos", 0.0))
+                        pt_rodada_anterior = float(res_ant.json().get("pontos", 0.0))
             except:
                 pass
         
@@ -358,7 +344,7 @@ def carregar_dados_liga():
 @st.cache_data(ttl=120)
 def carregar_partidas_br(num_rodada):
     try:
-        res = requests.get(f"https://api.cartola.globo.com/partidas/{num_rodada}", headers=HEADERS, timeout=5)
+        res = requests.get(f"https://api.cartola.globo.com/partidas/{num_rodada}", headers=HEADERS, timeout=4)
         if res.status_code == 200:
             dados = res.json()
             partidas = dados.get("partidas", [])
@@ -386,7 +372,7 @@ def carregar_partidas_br(num_rodada):
     return "RESULTADOS DO BRASILEIRÃO EM ATUALIZAÇÃO"
 
 # 5. Função para carregar a base de vencedores do mês
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
         try:
@@ -397,7 +383,7 @@ def carregar_base_vencedores():
             return None
     return None
 
-# Busca os dados
+# Carregamento dos dados no estado da aplicação
 df, rodada_atual, status_mercado = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
@@ -430,7 +416,7 @@ with col_title:
 
 st.divider()
 
-# Botão de Atualização
+# Botão de Atualização Manual
 col_status, col_btn = st.columns([4, 1])
 with col_status:
     if status_mercado == 2:
@@ -441,14 +427,14 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# --- 8. CARD DETALHADO DO TIME SELECIONADO ---
+# --- 8. CARD DETALHADO INSTANTÂNEO ---
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
     
     time_selecionado = st.selectbox("Selecione um time para ver a análise completa:", df["Time"].tolist())
     
+    # Processamento em memória (Instantâneo)
     dados_time = df[df["Time"] == time_selecionado].iloc[0]
-    
     media_pontos_liga = df["Pontos Ganhos (Última Rodada)"].mean()
     media_patrimonio_liga = df["Patrimônio (C$)"].mean()
     
@@ -456,18 +442,11 @@ if not df.empty:
     pt_ant = dados_time["Pontos Rodada Anterior"]
     diff_pontos = pt_atual - pt_ant
     
-    if diff_pontos >= 0:
-        html_diff_pontos = f'<span class="txt-up">↑ {diff_pontos:.2f}</span>'
-    else:
-        html_diff_pontos = f'<span class="txt-down">↓ {abs(diff_pontos):.2f}</span>'
-        
+    html_diff_pontos = f'<span class="txt-up">↑ {diff_pontos:.2f}</span>' if diff_pontos >= 0 else f'<span class="txt-down">↓ {abs(diff_pontos):.2f}</span>'
+    
     val_cartoletas = dados_time["Valorização (C$)"]
-    if val_cartoletas >= 0:
-        html_val_cartoletas = f'<span class="txt-up">↑ {val_cartoletas:.2f}</span>'
-    else:
-        html_val_cartoletas = f'<span class="txt-down">↓ {abs(val_cartoletas):.2f}</span>'
+    html_val_cartoletas = f'<span class="txt-up">↑ {val_cartoletas:.2f}</span>' if val_cartoletas >= 0 else f'<span class="txt-down">↓ {abs(val_cartoletas):.2f}</span>'
 
-    # RENDERIZAÇÃO ESTÁVEL DO CARD DE PERFORMANCE
     st.markdown(f"<h3 style='margin-bottom:0; color:#00f2ff;'>⚽ {dados_time['Time']}</h3>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#c084fc; font-weight:bold; margin-bottom:15px;'>Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>", unsafe_allow_html=True)
 
