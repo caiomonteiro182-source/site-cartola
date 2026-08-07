@@ -155,18 +155,30 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados da Liga (Resgatando Valorização Real)
-@st.cache_data(ttl=60)
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json"
+}
+
+# Busca Atletas Pontuados e Valorizações Ao Vivo
+@st.cache_data(ttl=15)
+def obter_pontuados_ao_vivo():
+    try:
+        res = requests.get("https://api.cartola.globo.com/atleta/pontuados", headers=HEADERS, timeout=5)
+        if res.status_code == 200:
+            dados = res.json()
+            return dados.get("atletas", {})
+    except:
+        pass
+    return {}
+
+# 3. Função de Carregamento de Dados da Liga com Suporte Ao Vivo
+@st.cache_data(ttl=30)
 def carregar_dados_liga():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json"
-    }
-    
     rodada_cartola = 20
     status_mercado = 1 
     try:
-        res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
+        res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=HEADERS, timeout=5)
         if res_m.status_code == 200:
             dados_m = res_m.json()
             rodada_cartola = dados_m.get("rodada_atual", 20)
@@ -188,6 +200,11 @@ def carregar_dados_liga():
     if df_base is None:
         st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
         return pd.DataFrame(), rodada_cartola, status_mercado
+
+    atletas_ao_vivo = {}
+    # Se o mercado estiver FECHADO (rodada rolando em tempo real = status 2)
+    if status_mercado == 2:
+        atletas_ao_vivo = obter_pontuados_ao_vivo()
 
     lista_times = []
     
@@ -211,36 +228,60 @@ def carregar_dados_liga():
         
         if time_id:
             try:
-                # 1. Puxa dados gerais do time
-                res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
+                # 1. Busca os dados do time
+                res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=HEADERS, timeout=5)
                 if res_p.status_code == 200:
                     dados = res_p.json()
-                    
-                    # Pontos
-                    p_raw = dados.get("pontos", 0)
-                    if isinstance(p_raw, dict):
-                        pt_rodada = float(p_raw.get("rodada", 0))
-                    elif isinstance(p_raw, (int, float)):
-                        pt_rodada = float(p_raw)
-                    
                     patrimonio = float(dados.get("patrimonio", 100.0))
                     
-                    # Tenta ler a valorização padrão
-                    val_api = dados.get("valorizacao", 0.0)
-                    if val_api is not None and float(val_api) != 0.0:
-                        valorizacao_rodada = float(val_api)
+                    # Se os jogos estão acontecendo AGORA (Ao Vivo)
+                    if status_mercado == 2 and atletas_ao_vivo:
+                        atletas_escalados = dados.get("atletas", [])
+                        capitao_id = dados.get("capitao_id", None)
+                        
+                        pontos_vivo = 0.0
+                        val_vivo = 0.0
+                        
+                        for atleta in atletas_escalados:
+                            a_id = str(atleta.get("atleta_id"))
+                            if a_id in atletas_ao_vivo:
+                                info_v = atletas_ao_vivo[a_id]
+                                p_atleta = float(info_v.get("pontuacao", 0.0))
+                                v_atleta = float(info_v.get("variacao_num", 0.0))
+                                
+                                # Aplica o multiplicador do Capitão (2x)
+                                if capitao_id and int(a_id) == int(capitao_id):
+                                    p_atleta *= 2
+                                    
+                                pontos_vivo += p_atleta
+                                val_vivo += v_atleta
+                        
+                        pt_rodada = pontos_vivo
+                        valorizacao_rodada = val_vivo
                     else:
-                        # Fallback: Se estiver zerado, busca a valorização acumulada nos atletas do time na rodada
-                        rodada_alvo = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
-                        res_at = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_alvo}", headers=headers, timeout=5)
-                        if res_at.status_code == 200:
-                            dados_at = res_at.json()
-                            atletas = dados_at.get("atletas", [])
-                            if atletas:
-                                valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
+                        # Mercado Aberto / Consolidação pós-rodada
+                        p_raw = dados.get("pontos", 0)
+                        if isinstance(p_raw, dict):
+                            pt_rodada = float(p_raw.get("rodada", 0))
+                        elif isinstance(p_raw, (int, float)):
+                            pt_rodada = float(p_raw)
+                        
+                        val_api = dados.get("valorizacao", 0.0)
+                        if val_api is not None and float(val_api) != 0.0:
+                            valorizacao_rodada = float(val_api)
+                        else:
+                            # Busca variação da última rodada nos atletas
+                            rodada_alvo = rodada_cartola - 1
+                            res_at = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_alvo}", headers=HEADERS, timeout=5)
+                            if res_at.status_code == 200:
+                                dados_at = res_at.json()
+                                atletas = dados_at.get("atletas", [])
+                                if atletas:
+                                    valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
             except:
                 pass
         
+        # Se ao vivo, soma o ao vivo com o histórico acumulado
         if status_mercado == 2:
             total_acumulado = pontos_base_historico + pt_rodada
         else:
@@ -268,12 +309,8 @@ def carregar_dados_liga():
 # 4. Função para carregar os jogos reais do Campeonato Brasileiro
 @st.cache_data(ttl=120)
 def carregar_partidas_br(num_rodada):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json"
-    }
     try:
-        res = requests.get(f"https://api.cartola.globo.com/partidas/{num_rodada}", headers=headers, timeout=5)
+        res = requests.get(f"https://api.cartola.globo.com/partidas/{num_rodada}", headers=HEADERS, timeout=5)
         if res.status_code == 200:
             dados = res.json()
             partidas = dados.get("partidas", [])
@@ -318,7 +355,8 @@ df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
 
 # --- 6. LETREIRO NEON ---
-texto_ticker = f"⚽ PLACARES DA {rodada_atual}ª RODADA DO BRASILEIRÃO: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE TEMPORADA 2026"
+status_tag = "🔴 AO VIVO" if status_mercado == 2 else "🟢 MERCADO ABERTO"
+texto_ticker = f"⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE"
 
 st.markdown(f"""
     <div class="ticker-container">
@@ -349,6 +387,10 @@ st.divider()
 
 # Botão de Atualização Manual
 col_status, col_btn = st.columns([4, 1])
+with col_status:
+    if status_mercado == 2:
+        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sendo sincronizados em tempo real.</h5>", unsafe_allow_html=True)
+
 with col_btn:
     if st.button("🔄 Atualizar Ao Vivo"):
         st.cache_data.clear()
@@ -361,7 +403,9 @@ if not df.empty:
 
     k1, k2 = st.columns(2)
     k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total Acumulado']} pts")
-    k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
+    
+    rotulo_mito = "🚀 MITO DA RODADA (AO VIVO)" if status_mercado == 2 else "🚀 MITO DA RODADA"
+    k2.metric(rotulo_mito, f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
 
     st.write("")
 
@@ -466,7 +510,7 @@ if not df.empty:
         )
 
     with tab4:
-        st.subheader("💰 Painel de Patrimônio & Valorização")
+        st.subheader("💰 Painel de Patrimônio & Valorização Ao Vivo")
         st.caption("Diferença de cartoletas (C$) ganhas/perdidas na rodada e patrimônio acumulado.")
 
         df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
@@ -479,17 +523,18 @@ if not df.empty:
         v1.metric("💎 TIME MAIS RICO (PATRIMÔNIO)", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
         
         val_txt = f"+C$ {maior_val['Valorização (C$)']}" if maior_val['Valorização (C$)'] > 0 else f"C$ {maior_val['Valorização (C$)']}"
-        v2.metric("📈 MAIOR VALORIZAÇÃO NA RODADA", f"{maior_val['Time']}", val_txt)
+        rotulo_val = "📈 MAIOR VALORIZAÇÃO DA RODADA (AO VIVO)" if status_mercado == 2 else "📈 MAIOR VALORIZAÇÃO NA RODADA"
+        v2.metric(rotulo_val, f"{maior_val['Time']}", val_txt)
 
         st.write("")
-        st.markdown("### 📊 Variação de Cartoletas na Última Rodada")
+        st.markdown("### 📊 Variação de Cartoletas na Rodada")
         
         st.dataframe(
             df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)", "Pontos Ganhos (Última Rodada)"]],
             column_config={
                 "Valorização (C$)": st.column_config.NumberColumn(
                     "Valorização na Rodada (C$)",
-                    help="Diferença de cartoletas calculada na última rodada",
+                    help="Cartoletas calculadas em tempo real durante a rodada",
                     format="C$ %.2f"
                 ),
                 "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
