@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial + Letreiro)
+# 2. Estilização Cyberpunk Neon
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -155,7 +155,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados da Liga (Calculando a Valorização)
+# 3. Função de Carregamento de Dados da Liga
 @st.cache_data(ttl=60)
 def carregar_dados_liga():
     headers = {
@@ -206,7 +206,7 @@ def carregar_dados_liga():
             time_id = None
 
         pt_rodada = 0.0
-        patrimonio = 100.0  # Valor padrão
+        patrimonio = 100.0
         valorizacao_rodada = 0.0
         
         if time_id:
@@ -215,17 +215,14 @@ def carregar_dados_liga():
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     
-                    # Pontuação
+                    # Pontos conquistados na rodada
                     p_raw = dados.get("pontos", 0)
                     if isinstance(p_raw, dict):
                         pt_rodada = float(p_raw.get("rodada", 0))
                     elif isinstance(p_raw, (int, float)):
                         pt_rodada = float(p_raw)
                     
-                    # Patrimônio atual
                     patrimonio = float(dados.get("patrimonio", 100.0))
-                    
-                    # Captura direta do valorizado na última rodada vindo do JSON da API
                     valorizacao_rodada = float(dados.get("valorizacao", 0.0))
             except:
                 pass
@@ -238,19 +235,19 @@ def carregar_dados_liga():
         lista_times.append({
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
-            "Total": round(total_acumulado, 2),
-            "Última Rodada": round(pt_rodada, 2),
+            "Pontos Ganhos (Última Rodada)": round(pt_rodada, 2),
+            "Total Acumulado": round(total_acumulado, 2),
             "Patrimônio (C$)": round(patrimonio, 2),
             "Valorização (C$)": round(valorizacao_rodada, 2)
         })
 
     df = pd.DataFrame(lista_times)
-    df = df.sort_values(by="Total", ascending=False).reset_index(drop=True)
-    df["Posição"] = df.index + 1
+    df = df.sort_values(by="Total Acumulado", ascending=False).reset_index(drop=True)
+    df["Posição Geral"] = df.index + 1
     
-    top_score = df.iloc[0]["Total"]
-    df["Dif. p/ Rival"] = (df["Total"].shift(1) - df["Total"]).round(2).fillna(0)
-    df["Dif. p/ Líder"] = (top_score - df["Total"]).round(2)
+    top_score = df.iloc[0]["Total Acumulado"]
+    df["Dif. p/ Rival"] = (df["Total Acumulado"].shift(1) - df["Total Acumulado"]).round(2).fillna(0)
+    df["Dif. p/ Líder"] = (top_score - df["Total Acumulado"]).round(2)
     
     return df, rodada_cartola, status_mercado
 
@@ -306,7 +303,7 @@ df, rodada_atual, status_mercado = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
 
-# --- 6. LETREIRO DE NOTÍCIAS / RESULTADOS REAIS DO BRASILEIRÃO ---
+# --- 6. LETREIRO NEON COM RESULTADOS REAIS ---
 texto_ticker = f"⚽ PLACARES DA {rodada_atual}ª RODADA DO BRASILEIRÃO: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE TEMPORADA 2026"
 
 st.markdown(f"""
@@ -347,11 +344,11 @@ with col_btn:
 if not df.empty:
     # KPI METRIC CARDS
     lider_geral = df.iloc[0]
-    mito_rodada = df.sort_values(by="Última Rodada", ascending=False).iloc[0]
+    mito_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).iloc[0]
 
     k1, k2 = st.columns(2)
-    k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total']} pts")
-    k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"{mito_rodada['Última Rodada']} pts")
+    k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total Acumulado']} pts")
+    k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
 
     st.write("")
 
@@ -359,11 +356,11 @@ if not df.empty:
     tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas", "💰 Guia de Valorização"])
 
     with tab1:
-        st.subheader("⚡ Tabela de Posições da Liga")
+        st.subheader("⚡ Tabela de Posições e Desempenho da Liga")
         
         visao = st.radio(
-            "Selecione a visualização:",
-            ["Classificação Geral (Total Acumulado)", "Pontuação da Última Rodada"],
+            "Selecione a ordem de visualização:",
+            ["Classificação Geral (Total Acumulado)", "Ranking da Última Rodada (Pontos Ganhos)"],
             horizontal=True
         )
         
@@ -371,15 +368,31 @@ if not df.empty:
         
         if visao == "Classificação Geral (Total Acumulado)":
             st.dataframe(
-                df[["Posição", "Time", "Cartoleiro", "Total", "Última Rodada", "Dif. p/ Rival", "Dif. p/ Líder"]],
+                df[["Posição Geral", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado", "Dif. p/ Rival", "Dif. p/ Líder"]],
+                column_config={
+                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
+                        "Ganho na Rodada (pts)",
+                        format="%.2f"
+                    ),
+                    "Total Acumulado": st.column_config.NumberColumn(
+                        "Total Geral (pts)",
+                        format="%.2f"
+                    )
+                },
                 use_container_width=True,
                 hide_index=True
             )
         else:
-            df_rodada = df.sort_values(by="Última Rodada", ascending=False).reset_index(drop=True)
+            df_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).reset_index(drop=True)
             df_rodada["Pos. Rodada"] = df_rodada.index + 1
             st.dataframe(
-                df_rodada[["Pos. Rodada", "Time", "Cartoleiro", "Última Rodada", "Total"]],
+                df_rodada[["Pos. Rodada", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado"]],
+                column_config={
+                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
+                        "Pontos Ganhos (Última Rodada)",
+                        format="+%.2f"
+                    )
+                },
                 use_container_width=True,
                 hide_index=True
             )
@@ -416,14 +429,14 @@ if not df.empty:
             st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
 
     with tab3:
-        st.subheader("🎯 Desempenho da Última Rodada")
-        st.caption("Rendimento isolado de cada cartoleiro na rodada mais recente.")
+        st.subheader("🎯 Pontos Ganhos na Última Rodada")
+        st.caption("Rendimento em pontos isolados conquistados por cada participante.")
         
-        df_rodada_sorted = df.sort_values(by="Última Rodada", ascending=True)
+        df_rodada_sorted = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=True)
         st.bar_chart(
             df_rodada_sorted,
             x="Time",
-            y="Última Rodada",
+            y="Pontos Ganhos (Última Rodada)",
             color="Time",
             use_container_width=True
         )
@@ -434,17 +447,16 @@ if not df.empty:
         st.caption("Visão geral do volume total de pontos acumulados no campeonato.")
         
         st.bar_chart(
-            df.sort_values(by="Total", ascending=True),
+            df.sort_values(by="Total Acumulado", ascending=True),
             x="Time",
-            y="Total",
+            y="Total Acumulado",
             use_container_width=True
         )
 
     with tab4:
         st.subheader("💰 Painel de Patrimônio & Valorização")
-        st.caption("Veja o patrimônio total e a variação exata da última rodada de cada participante.")
+        st.caption("Diferença de cartoletas (C$) ganhas/perdidas na rodada e patrimônio acumulado.")
 
-        # Ordenar por maior valorização da última rodada
         df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
         df_val["Rank Valorização"] = df_val.index + 1
 
@@ -452,23 +464,25 @@ if not df.empty:
         maior_val = df_val.iloc[0]
 
         v1, v2 = st.columns(2)
-        v1.metric("💎 TIME MAIS RICO (TOTAL)", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
+        v1.metric("💎 TIME MAIS RICO (PATRIMÔNIO)", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
         
-        # Formatação do card do maior valorizador
         val_txt = f"+C$ {maior_val['Valorização (C$)']}" if maior_val['Valorização (C$)'] > 0 else f"C$ {maior_val['Valorização (C$)']}"
-        v2.metric("📈 MAIOR VALORIZAÇÃO DA RODADA", f"{maior_val['Time']}", val_txt)
+        v2.metric("📈 MAIOR VALORIZAÇÃO NA RODADA", f"{maior_val['Time']}", val_txt)
 
         st.write("")
         st.markdown("### 📊 Variação de Cartoletas na Última Rodada")
         
-        # Tabela formatada com destaque na Valorização da Rodada
         st.dataframe(
-            df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)"]],
+            df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)", "Pontos Ganhos (Última Rodada)"]],
             column_config={
                 "Valorização (C$)": st.column_config.NumberColumn(
                     "Valorização na Rodada (C$)",
-                    help="Diferença de cartoletas ganhas ou perdidas na última rodada",
+                    help="Diferença de cartoletas na última rodada",
                     format="C$ %.2f"
+                ),
+                "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
+                    "Pontos Conquistados",
+                    format="%.2f pts"
                 ),
                 "Patrimônio (C$)": st.column_config.NumberColumn(
                     "Patrimônio Total (C$)",
