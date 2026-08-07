@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import os
+import base64
 from datetime import datetime
 
 # 1. Configuração da Página
@@ -12,20 +13,30 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + CSS Responsivo e Sprite Sheet da Grade
-st.markdown("""
+# 2. Carrega a imagem da grade em Base64 para garantir carregamento 100% confiável
+def carregar_imagem_base64(caminho_imagem):
+    if os.path.exists(caminho_imagem):
+        with open(caminho_imagem, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+            return f"data:image/png;base64,{encoded_string}"
+    return ""
+
+URL_BASE64_ESCUDOS = carregar_imagem_base64("escudos_times.png")
+
+# 3. Estilização Cyberpunk Neon + CSS Responsivo e Sprite Sheet da Grade
+st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
 
     /* Fundo Geral Escuro / Cyberpunk */
-    .stApp {
+    .stApp {{
         background: radial-gradient(circle at top center, #1e0b36 0%, #0a0813 60%, #030206 100%);
         color: #f1f5f9;
         font-family: 'Rajdhani', sans-serif;
-    }
+    }}
 
     /* Cabeçalhos Neon */
-    h1 {
+    h1 {{
         font-family: 'Teko', sans-serif !important;
         font-size: 52px !important;
         text-transform: uppercase;
@@ -35,25 +46,25 @@ st.markdown("""
         letter-spacing: 2px;
         margin-bottom: 0px !important;
         line-height: 1 !important;
-    }
+    }}
 
-    h2, h3 {
+    h2, h3 {{
         font-family: 'Rajdhani', sans-serif !important;
         color: #00f2ff !important;
         text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
         font-weight: 700;
-    }
+    }}
 
     /* CONTÊINER DO TÍTULO + TEMPORIZADOR */
-    .header-title-container {
+    .header-title-container {{
         display: flex;
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
-    }
+    }}
 
     /* ESTILO DO BANNER CONTADOR */
-    .market-timer-inline-open {
+    .market-timer-inline-open {{
         background: #ccff00;
         color: #0a0813;
         font-family: 'Teko', sans-serif;
@@ -68,9 +79,9 @@ st.markdown("""
         align-items: center;
         gap: 6px;
         white-space: nowrap;
-    }
+    }}
 
-    .market-timer-inline-closed {
+    .market-timer-inline-closed {{
         background: #ef4444;
         color: #ffffff;
         font-family: 'Teko', sans-serif;
@@ -85,18 +96,18 @@ st.markdown("""
         align-items: center;
         gap: 6px;
         white-space: nowrap;
-    }
+    }}
 
     /* Estilo do Subtítulo e Link */
-    .subtitle-header {
+    .subtitle-header {{
         color: #c084fc;
         font-weight: 700;
         margin-top: 4px;
         margin-bottom: 6px;
         font-size: 15px;
-    }
+    }}
 
-    .link-liga {
+    .link-liga {{
         display: inline-block;
         color: #00f2ff !important;
         font-weight: 700;
@@ -108,10 +119,10 @@ st.markdown("""
         border: 1px solid rgba(0, 242, 255, 0.4);
         border-radius: 6px;
         transition: all 0.3s ease;
-    }
+    }}
 
     /* PAINEL FIXO DE JOGOS */
-    .matches-panel-container {
+    .matches-panel-container {{
         width: 100%;
         background: rgba(10, 8, 19, 0.85);
         border: 1px solid rgba(0, 242, 255, 0.3);
@@ -119,9 +130,9 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
         padding: 12px 16px;
         margin-bottom: 20px;
-    }
+    }}
 
-    .matches-panel-header {
+    .matches-panel-header {{
         font-family: 'Rajdhani', sans-serif;
         font-size: 16px;
         font-weight: 700;
@@ -132,25 +143,25 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 8px;
-    }
+    }}
 
-    .matches-grid {
+    .matches-grid {{
         display: flex;
         gap: 10px;
         overflow-x: auto;
         padding-bottom: 8px;
         -webkit-overflow-scrolling: touch;
-    }
+    }}
 
-    .matches-grid::-webkit-scrollbar {
+    .matches-grid::-webkit-scrollbar {{
         height: 5px;
-    }
-    .matches-grid::-webkit-scrollbar-thumb {
+    }}
+    .matches-grid::-webkit-scrollbar-thumb {{
         background: #a855f7;
         border-radius: 4px;
-    }
+    }}
 
-    .match-card {
+    .match-card {{
         flex: 0 0 auto;
         background: rgba(18, 12, 38, 0.8);
         border: 1px solid rgba(168, 85, 247, 0.3);
@@ -161,92 +172,92 @@ st.markdown("""
         justify-content: center;
         gap: 10px;
         min-width: 150px;
-    }
+    }}
 
-    /* ELEMENTO DE ESCUDO CORTADO DA SPRITE SHEET */
-    .escudo-sprite {
+    /* ELEMENTO DE ESCUDO CORTADO DA SPRITE SHEET VIA BASE64 */
+    .escudo-sprite {{
         width: 36px;
         height: 36px;
         display: inline-block;
         background-repeat: no-repeat;
         background-size: 400% 500%;
         flex-shrink: 0;
-    }
+    }}
 
-    .match-score {
+    .match-score {{
         font-family: 'Teko', sans-serif;
         font-size: 20px;
         font-weight: bold;
         color: #ffffff;
         letter-spacing: 1px;
         text-align: center;
-    }
+    }}
 
-    .match-vs {
+    .match-vs {{
         font-family: 'Rajdhani', sans-serif;
         font-size: 12px;
         color: #94a3b8;
         font-weight: bold;
-    }
+    }}
 
     /* CARDS DE ESTATÍSTICA */
-    .box-m1 {
+    .box-m1 {{
         background: rgba(10, 8, 19, 0.85);
         border-radius: 12px;
         padding: 16px;
         border-left: 5px solid #00f2ff;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
         margin-bottom: 10px;
-    }
+    }}
 
-    .box-m2 {
+    .box-m2 {{
         background: rgba(10, 8, 19, 0.85);
         border-radius: 12px;
         padding: 16px;
         border-left: 5px solid #22c55e;
         box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
         margin-bottom: 10px;
-    }
+    }}
 
-    .lbl-title {
+    .lbl-title {{
         font-size: 13px;
         font-weight: bold;
         color: #94a3b8;
         text-transform: uppercase;
         letter-spacing: 1px;
-    }
+    }}
 
-    .val-num {
+    .val-num {{
         font-family: 'Teko', sans-serif;
         font-size: 42px;
         font-weight: bold;
         color: #ffffff;
         line-height: 1;
         margin-right: 8px;
-    }
+    }}
 
-    .txt-up {
+    .txt-up {{
         color: #22c55e !important;
         font-size: 22px;
         font-weight: bold;
-    }
+    }}
 
-    .txt-down {
+    .txt-down {{
         color: #ef4444 !important;
         font-size: 22px;
         font-weight: bold;
-    }
+    }}
 
-    div[data-testid="stMetric"] {
+    div[data-testid="stMetric"] {{
         background: rgba(18, 12, 38, 0.75);
         border: 2px solid #a855f7;
         box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
         padding: 12px 16px;
         border-radius: 12px;
         margin-bottom: 8px;
-    }
+    }}
 
-    button[data-baseweb="tab"] {
+    button[data-baseweb="tab"] {{
         background-color: rgba(15, 23, 42, 0.6) !important;
         color: #94a3b8 !important;
         font-size: 16px !important;
@@ -254,103 +265,103 @@ st.markdown("""
         font-weight: 700 !important;
         border-radius: 8px 8px 0px 0px;
         padding: 8px 14px !important;
-    }
+    }}
 
-    button[aria-selected="true"] {
+    button[aria-selected="true"] {{
         background: linear-gradient(180deg, rgba(168, 85, 247, 0.3) 0%, rgba(0, 242, 255, 0.1) 100%) !important;
         color: #00f2ff !important;
         border-bottom: 3px solid #00f2ff !important;
-    }
+    }}
 
-    div[data-testid="stDataFrame"] {
+    div[data-testid="stDataFrame"] {{
         border: 1px solid #a855f7;
         border-radius: 12px;
         overflow: hidden;
-    }
+    }}
 
-    .card-vencedor {
+    .card-vencedor {{
         background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
         border: 2px solid #eab308;
         border-radius: 12px;
         padding: 14px;
         margin-bottom: 10px;
         text-align: center;
-    }
+    }}
 
-    .card-dica {
+    .card-dica {{
         background: rgba(18, 12, 38, 0.7);
         border: 1px solid #00f2ff;
         border-radius: 10px;
         padding: 12px;
         margin-bottom: 10px;
-    }
+    }}
 
-    hr {
+    hr {{
         border-color: rgba(0, 242, 255, 0.3) !important;
         margin: 15px 0 !important;
-    }
+    }}
 
     /* REGRAS MOBILE */
-    @media (max-width: 768px) {
-        div[data-testid="stColumn"]:first-child {
+    @media (max-width: 768px) {{
+        div[data-testid="stColumn"]:first-child {{
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
             width: 100% !important;
-        }
+        }}
 
-        div[data-testid="stImage"] {
+        div[data-testid="stImage"] {{
             display: flex !important;
             justify-content: center !important;
             margin: 0 auto 10px auto !important;
-        }
+        }}
 
-        div[data-testid="stImage"] img {
+        div[data-testid="stImage"] img {{
             margin: 0 auto !important;
-        }
+        }}
 
-        h1 {
+        h1 {{
             font-size: 38px !important;
             text-align: center;
             width: 100%;
-        }
+        }}
 
-        .header-title-container {
+        .header-title-container {{
             justify-content: center;
             flex-direction: column;
             gap: 8px;
-        }
+        }}
 
-        .market-timer-inline-open, .market-timer-inline-closed {
+        .market-timer-inline-open, .market-timer-inline-closed {{
             font-size: 18px;
             padding: 4px 10px;
             margin-top: 4px;
-        }
+        }}
 
-        .subtitle-header {
+        .subtitle-header {{
             text-align: center;
             font-size: 13px;
-        }
+        }}
 
-        .header-col-wrapper {
+        .header-col-wrapper {{
             text-align: center;
-        }
+        }}
 
-        .link-liga {
+        .link-liga {{
             width: 100%;
             text-align: center;
             margin-top: 6px;
-        }
+        }}
 
-        .val-num {
+        .val-num {{
             font-size: 36px;
-        }
+        }}
 
-        .matches-panel-container {
+        .matches-panel-container {{
             padding: 10px;
-        }
-    }
+        }}
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -359,8 +370,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Mapeamento das posições da grade da imagem (4 colunas x 5 linhas)
-# Posições (Coluna, Linha): Colunas de 0 a 3 | Linhas de 0 a 4
+# 4. Mapeamento das posições da grade da imagem (4 colunas x 5 linhas)
 POSICOES_GRADE = {
     # Linha 0
     "CAP": (0, 0), "ATHLETICO-PR": (0, 0), "ATLÉTICO-PR": (0, 0),
@@ -394,19 +404,21 @@ POSICOES_GRADE = {
 }
 
 def obter_estilo_sprite(nome_clube, sigla_clube):
+    if not URL_BASE64_ESCUDOS:
+        return ""
+
     nome_u = nome_clube.upper().strip()
     sigla_u = sigla_clube.upper().strip()
     
     pos = POSICOES_GRADE.get(sigla_u) or POSICOES_GRADE.get(nome_u) or (0, 0)
     col, lin = pos
     
-    # Calcula a porcentagem do background-position para cortar a imagem 4x5
     pos_x = (col / 3.0) * 100
     pos_y = (lin / 4.0) * 100
     
-    return f"background-image: url('app/static/escudos_times.png'); background-position: {pos_x:.1f}% {pos_y:.1f}%;"
+    return f"background-image: url('{URL_BASE64_ESCUDOS}'); background-position: {pos_x:.1f}% {pos_y:.1f}%;"
 
-# 4. Carregamento dos dados da Liga
+# 5. Carregamento dos dados da Liga
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -549,7 +561,7 @@ def carregar_dados_liga():
     
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 5. Contador de Mercado
+# 6. Contador de Mercado
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -582,7 +594,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 6. Busca de partidas e aplicação dos escudos recortados
+# 7. Busca de partidas e aplicação dos escudos recortados
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -625,7 +637,7 @@ def carregar_partidas_com_escudos(num_rodada):
         pass
     return []
 
-# 7. Carregar Vencedores do Mês
+# 8. Carregar Vencedores do Mês
 @st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
@@ -642,7 +654,7 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 8. PAINEL FIXO COM ESCUDOS DA SUA ANEXO (GRADE 4x5) ---
+# --- 9. PAINEL FIXO COM ESCUDOS DA GRADE EMBUTIDOS EM BASE64 ---
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
@@ -675,7 +687,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 9. CABEÇALHO RESPONSIVO COM ESCUDO CENTRALIZADO NO MOBILE ---
+# --- 10. CABEÇALHO RESPONSIVO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -717,7 +729,7 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# --- 10. CARD DETALHADO INSTANTÂNEO ---
+# --- 11. CARD DETALHADO INSTANTÂNEO ---
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
     
