@@ -155,7 +155,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados da Liga
+# 3. Função de Carregamento de Dados da Liga (Resgatando Valorização Real)
 @st.cache_data(ttl=60)
 def carregar_dados_liga():
     headers = {
@@ -211,11 +211,12 @@ def carregar_dados_liga():
         
         if time_id:
             try:
+                # 1. Puxa dados gerais do time
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     
-                    # Pontos conquistados na rodada
+                    # Pontos
                     p_raw = dados.get("pontos", 0)
                     if isinstance(p_raw, dict):
                         pt_rodada = float(p_raw.get("rodada", 0))
@@ -223,7 +224,20 @@ def carregar_dados_liga():
                         pt_rodada = float(p_raw)
                     
                     patrimonio = float(dados.get("patrimonio", 100.0))
-                    valorizacao_rodada = float(dados.get("valorizacao", 0.0))
+                    
+                    # Tenta ler a valorização padrão
+                    val_api = dados.get("valorizacao", 0.0)
+                    if val_api is not None and float(val_api) != 0.0:
+                        valorizacao_rodada = float(val_api)
+                    else:
+                        # Fallback: Se estiver zerado, busca a valorização acumulada nos atletas do time na rodada
+                        rodada_alvo = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
+                        res_at = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_alvo}", headers=headers, timeout=5)
+                        if res_at.status_code == 200:
+                            dados_at = res_at.json()
+                            atletas = dados_at.get("atletas", [])
+                            if atletas:
+                                valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
             except:
                 pass
         
@@ -303,7 +317,7 @@ df, rodada_atual, status_mercado = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
 
-# --- 6. LETREIRO NEON COM RESULTADOS REAIS ---
+# --- 6. LETREIRO NEON ---
 texto_ticker = f"⚽ PLACARES DA {rodada_atual}ª RODADA DO BRASILEIRÃO: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE TEMPORADA 2026"
 
 st.markdown(f"""
@@ -342,7 +356,6 @@ with col_btn:
 
 # --- 8. VISUALIZAÇÃO E TABELAS ---
 if not df.empty:
-    # KPI METRIC CARDS
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).iloc[0]
 
@@ -352,7 +365,6 @@ if not df.empty:
 
     st.write("")
 
-    # ABAS
     tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas", "💰 Guia de Valorização"])
 
     with tab1:
@@ -477,7 +489,7 @@ if not df.empty:
             column_config={
                 "Valorização (C$)": st.column_config.NumberColumn(
                     "Valorização na Rodada (C$)",
-                    help="Diferença de cartoletas na última rodada",
+                    help="Diferença de cartoletas calculada na última rodada",
                     format="C$ %.2f"
                 ),
                 "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
