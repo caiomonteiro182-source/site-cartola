@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon
+# 2. Estilização Cyberpunk Neon + Cards Customizados
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -40,6 +40,29 @@ st.markdown("""
         color: #00f2ff !important;
         text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
         font-weight: 700;
+    }
+
+    /* Estilo do Link Oficial da Liga */
+    .link-liga {
+        display: inline-block;
+        color: #00f2ff !important;
+        font-weight: 700;
+        font-size: 15px;
+        text-decoration: none;
+        letter-spacing: 1px;
+        margin-top: 4px;
+        padding: 4px 12px;
+        background: rgba(0, 242, 255, 0.08);
+        border: 1px solid rgba(0, 242, 255, 0.4);
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .link-liga:hover {
+        background: rgba(0, 242, 255, 0.25);
+        border-color: #00f2ff;
+        box-shadow: 0 0 12px rgba(0, 242, 255, 0.6);
+        color: #ffffff !important;
     }
 
     /* ESTILO DO LETREIRO (MARQUEE) NEON */
@@ -73,6 +96,45 @@ st.markdown("""
         100% { transform: translate(-100%, 0); }
     }
 
+    /* CARD ESTILO PAINEL DE TIME */
+    .team-detail-card {
+        background: rgba(18, 12, 38, 0.85);
+        border: 2px solid #00f2ff;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.25);
+        border-radius: 14px;
+        padding: 20px;
+        margin-top: 15px;
+        margin-bottom: 25px;
+    }
+
+    .detail-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .detail-value {
+        font-family: 'Teko', sans-serif;
+        font-size: 42px;
+        font-weight: bold;
+        color: #ffffff;
+        line-height: 1;
+    }
+
+    .val-up {
+        color: #22c55e !important;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .val-down {
+        color: #ef4444 !important;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
     /* Cartões de Métricas (KPIs) Neons */
     div[data-testid="stMetric"] {
         background: rgba(18, 12, 38, 0.75);
@@ -80,26 +142,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(168, 85, 247, 0.35), inset 0 0 10px rgba(0, 242, 255, 0.1);
         padding: 16px;
         border-radius: 14px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    div[data-testid="stMetric"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 0 25px rgba(0, 242, 255, 0.6);
-        border-color: #00f2ff;
-    }
-
-    div[data-testid="stMetricLabel"] {
-        color: #c084fc !important;
-        font-size: 16px !important;
-        font-weight: bold;
-        letter-spacing: 1px;
-    }
-
-    div[data-testid="stMetricValue"] {
-        color: #00f2ff !important;
-        font-family: 'Teko', sans-serif !important;
-        font-size: 38px !important;
     }
 
     /* Estilização das Abas */
@@ -129,7 +171,6 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* Card de Vencedor e Dicas */
     .card-vencedor {
         background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
         border: 2px solid #eab308;
@@ -160,7 +201,6 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# Busca Atletas Pontuados e Valorizações Ao Vivo
 @st.cache_data(ttl=15)
 def obter_pontuados_ao_vivo():
     try:
@@ -186,7 +226,6 @@ def carregar_dados_liga():
     except:
         pass
 
-    # Carrega o CSV base principal
     df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -222,6 +261,7 @@ def carregar_dados_liga():
             time_id = None
 
         pt_rodada = 0.0
+        pt_rodada_anterior = 0.0
         patrimonio = 100.0
         valorizacao_rodada = 0.0
         
@@ -272,6 +312,13 @@ def carregar_dados_liga():
                                 atletas = dados_at.get("atletas", [])
                                 if atletas:
                                     valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
+
+                rodada_penultima = rodada_cartola - 1 if status_mercado == 2 else rodada_cartola - 2
+                if rodada_penultima >= 1:
+                    res_ant = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", headers=HEADERS, timeout=5)
+                    if res_ant.status_code == 200:
+                        dados_ant = res_ant.json()
+                        pt_rodada_anterior = float(dados_ant.get("pontos", 0.0))
             except:
                 pass
         
@@ -284,6 +331,7 @@ def carregar_dados_liga():
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
             "Pontos Ganhos (Última Rodada)": round(pt_rodada, 2),
+            "Pontos Rodada Anterior": round(pt_rodada_anterior, 2),
             "Total Acumulado": round(total_acumulado, 2),
             "Patrimônio (C$)": round(patrimonio, 2),
             "Valorização (C$)": round(valorizacao_rodada, 2)
@@ -357,7 +405,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 7. CABEÇALHO & LOGO ---
+# --- 7. CABEÇALHO, LOGO & LINK DA LIGA ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -374,23 +422,90 @@ with col_logo:
 
 with col_title:
     st.title("BLACK GUYS LEAGUE")
-    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #c084fc; margin-top: -10px; margin-bottom: 2px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
+    st.markdown("""
+        <a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">
+            🔗 Acessar Liga Oficial no Cartola FC
+        </a>
+    """, unsafe_allow_html=True)
 
 st.divider()
 
-# Botão de Atualização Manual
+# Botão de Atualização
 col_status, col_btn = st.columns([4, 1])
 with col_status:
     if status_mercado == 2:
-        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sendo sincronizados em tempo real.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 Atualizar Ao Vivo"):
         st.cache_data.clear()
         st.rerun()
 
-# --- 8. VISUALIZAÇÃO E TABELAS ---
+# --- 8. CARD DETALHADO DO TIME SELECIONADO ---
 if not df.empty:
+    st.subheader("🔍 Painel de Desempenho Individual do Time")
+    
+    time_selecionado = st.selectbox("Selecione um time para ver a análise completa:", df["Time"].tolist())
+    
+    dados_time = df[df["Time"] == time_selecionado].iloc[0]
+    
+    media_pontos_liga = df["Pontos Ganhos (Última Rodada)"].mean()
+    media_patrimonio_liga = df["Patrimônio (C$)"].mean()
+    
+    pt_atual = dados_time["Pontos Ganhos (Última Rodada)"]
+    pt_ant = dados_time["Pontos Rodada Anterior"]
+    diff_pontos = pt_atual - pt_ant
+    
+    if diff_pontos >= 0:
+        html_diff_pontos = f'<span class="val-up">↑ {diff_pontos:.2f}</span>'
+    else:
+        html_diff_pontos = f'<span class="val-down">↓ {abs(diff_pontos):.2f}</span>'
+        
+    val_cartoletas = dados_time["Valorização (C$)"]
+    if val_cartoletas >= 0:
+        html_val_cartoletas = f'<span class="val-up">↑ {val_cartoletas:.2f}</span>'
+    else:
+        html_val_cartoletas = f'<span class="val-down">↓ {abs(val_cartoletas):.2f}</span>'
+
+    st.markdown(f"""
+        <div class="team-detail-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 242, 255, 0.2); padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0; color: #00f2ff;">⚽ {dados_time['Time']}</h3>
+                    <p style="margin: 0; color: #c084fc; font-weight: bold;">Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <div style="flex: 1; min-width: 250px; background: rgba(10, 8, 19, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid #00f2ff;">
+                    <div class="detail-title">⚽ ÚLTIMA PONTUAÇÃO</div>
+                    <div style="display: flex; align-items: baseline; gap: 10px;">
+                        <span class="detail-value">{pt_atual:.2f}</span>
+                        {html_diff_pontos}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #94a3b8;">
+                        MÉDIA DOS CARTOLEIROS: <strong style="color: #f1f5f9;">{media_pontos_liga:.2f} pts</strong>
+                    </div>
+                </div>
+                
+                <div style="flex: 1; min-width: 250px; background: rgba(10, 8, 19, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
+                    <div class="detail-title">💰 PATRIMÔNIO</div>
+                    <div style="display: flex; align-items: baseline; gap: 10px;">
+                        <span class="detail-value">C$ {dados_time['Patrimônio (C$)']:.2f}</span>
+                        {html_val_cartoletas}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #94a3b8;">
+                        MÉDIA DOS CARTOLEIROS: <strong style="color: #f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # --- VISUALIZAÇÃO DAS ABAS ---
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).iloc[0]
 
@@ -402,7 +517,6 @@ if not df.empty:
 
     st.write("")
 
-    # APENAS 3 ABAS (Sem a aba de Gráficos)
     tab1, tab2, tab3 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "💰 Guia de Valorização"])
 
     with tab1:
