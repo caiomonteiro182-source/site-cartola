@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import os
+import base64
 from datetime import datetime
 
 # 1. Configuração da Página
@@ -12,7 +13,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + Regra de Alinhamento Condicional (Celular = Centro | Computador = Esquerda)
+# 2. Converte a logo em Base64 para inserção direta no HTML
+def carregar_logo_base64():
+    for ext in ["logo.png", "logo.jpg", "logo.jpeg"]:
+        if os.path.exists(ext):
+            with open(ext, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode()
+                return f"data:image/png;base64,{encoded_string}"
+    return ""
+
+URL_BASE64_LOGO = carregar_logo_base64()
+
+# 3. Estilização Cyberpunk Neon + Layout Responsivo da Logo (Celular = Centro | PC = Esquerda)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -22,6 +34,20 @@ st.markdown("""
         background: radial-gradient(circle at top center, #1e0b36 0%, #0a0813 60%, #030206 100%);
         color: #f1f5f9;
         font-family: 'Rajdhani', sans-serif;
+    }
+
+    /* CONTÊINER DO CABEÇALHO DA LIGA (DESKTOP) */
+    .header-main-flex {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 10px;
+    }
+
+    .header-logo-img {
+        width: 130px;
+        height: auto;
+        object-fit: contain;
     }
 
     /* Cabeçalhos Neon */
@@ -287,11 +313,9 @@ st.markdown("""
         margin: 15px 0 !important;
     }
 
-    /* --- REGRAS EXCLUSIVAS PARA DISPOSITIVOS MÓVEIS (DISPARADAS APENAS NO CELULAR) --- */
+    /* --- REGRAS EXCLUSIVAS PARA CELULAR (TELA < 768px) --- */
     @media (max-width: 768px) {
-        /* Força a coluna do cabeçalho a se comportar como bloco centralizado no celular */
-        div[data-testid="stColumn"]:first-child {
-            display: flex !important;
+        .header-main-flex {
             flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
@@ -299,62 +323,54 @@ st.markdown("""
             width: 100% !important;
         }
 
-        /* Centraliza a imagem da logo exclusivamente no celular */
-        div[data-testid="stImage"] {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            margin: 0 auto 10px auto !important;
-            text-align: center !important;
-        }
-
-        div[data-testid="stImage"] > img {
+        .header-logo-img {
             display: block !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
+            margin: 0 auto 12px auto !important;
+            width: 140px !important;
         }
 
         h1 {
             font-size: 38px !important;
-            text-align: center;
-            width: 100%;
+            text-align: center !important;
+            width: 100% !important;
         }
 
         .header-title-container {
-            justify-content: center;
-            flex-direction: column;
-            gap: 8px;
+            justify-content: center !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            width: 100% !important;
         }
 
         .market-timer-inline-open, .market-timer-inline-closed {
-            font-size: 18px;
-            padding: 4px 10px;
-            margin-top: 4px;
+            font-size: 18px !important;
+            padding: 4px 10px !important;
+            margin-top: 4px !important;
         }
 
         .subtitle-header {
-            text-align: center;
-            font-size: 13px;
+            text-align: center !important;
+            font-size: 13px !important;
+            width: 100% !important;
         }
 
         .header-col-wrapper {
-            text-align: center;
-            width: 100%;
+            text-align: center !important;
+            width: 100% !important;
         }
 
         .link-liga {
-            width: 100%;
-            text-align: center;
-            margin-top: 6px;
+            width: 100% !important;
+            text-align: center !important;
+            margin-top: 6px !important;
         }
 
         .val-num {
-            font-size: 36px;
+            font-size: 36px !important;
         }
 
         .matches-panel-container {
-            padding: 10px;
+            padding: 10px !important;
         }
     }
     </style>
@@ -365,7 +381,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Carregamento dos dados da Liga
+# 4. Carregamento dos dados da Liga
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -508,7 +524,7 @@ def carregar_dados_liga():
     
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 4. Contador de Mercado
+# 5. Contador de Mercado
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -541,7 +557,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Busca de partidas e escudos da API do Cartola FC
+# 6. Busca de partidas e escudos da API do Cartola FC
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -584,7 +600,7 @@ def carregar_partidas_com_escudos(num_rodada):
         pass
     return []
 
-# 6. Carregar Vencedores do Mês
+# 7. Carregar Vencedores do Mês
 @st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
@@ -601,7 +617,7 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 7. PAINEL FIXO COM ESCUDOS DA API CARTOLA ---
+# --- 8. PAINEL FIXO COM ESCUDOS DA API CARTOLA ---
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
@@ -634,25 +650,13 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 8. CABEÇALHO COM LOGO CONDICIONAL (CENTRALIZADA NO CELULAR / ESQUERDA NO COMPUTADOR) ---
-col_logo, col_title = st.columns([1, 4])
+# --- 9. CABEÇALHO UNIFICADO VIA HTML/BASE64 (GARANTE ALINHAMENTO PERFEITO) ---
+badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
+img_logo_html = f'<img src="{URL_BASE64_LOGO}" class="header-logo-img" alt="Logo">' if URL_BASE64_LOGO else ''
 
-with col_logo:
-    logo_path = None
-    for ext in ["logo.jpg", "logo.png", "logo.jpeg"]:
-        if os.path.exists(ext):
-            logo_path = ext
-            break
-            
-    if logo_path:
-        st.image(logo_path, width=130)
-    else:
-        st.title("⚽")
-
-with col_title:
-    badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
-    
-    st.markdown(f"""
+st.markdown(f"""
+    <div class="header-main-flex">
+        {img_logo_html}
         <div class="header-col-wrapper">
             <div class="header-title-container">
                 <h1>BLACK GUYS LEAGUE</h1>
@@ -661,7 +665,8 @@ with col_title:
             <div class="subtitle-header">TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</div>
             <a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">🔗 Acessar Liga Oficial no Cartola FC</a>
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+""", unsafe_allow_html=True)
 
 st.divider()
 
@@ -676,7 +681,7 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# --- 9. CARD DETALHADO INSTANTÂNEO ---
+# --- 10. CARD DETALHADO INSTANTÂNEO ---
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
     
