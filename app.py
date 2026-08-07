@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial)
+# 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial + Letreiro)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -40,6 +40,37 @@ st.markdown("""
         color: #00f2ff !important;
         text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
         font-weight: 700;
+    }
+
+    /* ESTILO DO LETREIRO (MARQUEE) NEON */
+    .ticker-container {
+        width: 100%;
+        background: rgba(10, 8, 19, 0.85);
+        border: 1px solid #00f2ff;
+        border-radius: 8px;
+        box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
+        overflow: hidden;
+        white-space: nowrap;
+        padding: 8px 0;
+        margin-bottom: 20px;
+    }
+
+    .ticker-text {
+        display: inline-block;
+        padding-left: 100%;
+        animation: marquee 22s linear infinite;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: #00f2ff;
+        text-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+    }
+
+    @keyframes marquee {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(-100%, 0); }
     }
 
     /* Cartões de Métricas (KPIs) Neons */
@@ -148,7 +179,7 @@ def carregar_dados_liga():
 
     if df_base is None:
         st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
-        return pd.DataFrame(), rodada_cartola
+        return pd.DataFrame(), rodada_cartola, status_mercado
 
     lista_times = []
     
@@ -201,7 +232,7 @@ def carregar_dados_liga():
     df["Dif. p/ Rival"] = (df["Total"].shift(1) - df["Total"]).round(2).fillna(0)
     df["Dif. p/ Líder"] = (top_score - df["Total"]).round(2)
     
-    return df, rodada_cartola
+    return df, rodada_cartola, status_mercado
 
 # 4. Função para carregar a base de vencedores do mês
 @st.cache_data(ttl=60)
@@ -215,7 +246,27 @@ def carregar_base_vencedores():
             return None
     return None
 
-# --- 5. CABEÇALHO & LOGO ---
+# Busca os dados no início para usar no letreiro
+df, rodada_atual, status_mercado = carregar_dados_liga()
+df_vencedores = carregar_base_vencedores()
+
+# --- 5. LETREIRO DE NOTÍCIAS / RODADA ---
+status_texto = "AO VIVO 🔴 (Rodada em Andamento)" if status_mercado == 2 else "MERCADO ABERTO 🟢 (Aguardando Jogos)"
+
+if not df.empty:
+    lider_nome = df.iloc[0]['Time']
+    mito_nome = df.sort_values(by="Última Rodada", ascending=False).iloc[0]['Time']
+    texto_ticker = f"⚽ CAMPEONATO BRASILEIRO 2026 • RODADA ATUAL: {rodada_atual}ª RODADA • STATUS: {status_texto} • 🥇 LÍDER DA LIGA: {lider_nome} • 🚀 MITO DA RODADA: {mito_nome} • Siga acompanhando a Black Guys League!"
+else:
+    texto_ticker = f"⚽ CAMPEONATO BRASILEIRO 2026 • RODADA ATUAL: {rodada_atual}ª RODADA • STATUS: {status_texto} • Carregando dados da Black Guys League..."
+
+st.markdown(f"""
+    <div class="ticker-container">
+        <div class="ticker-text">{texto_ticker}</div>
+    </div>
+""", unsafe_allow_html=True)
+
+# --- 6. CABEÇALHO & LOGO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -243,11 +294,7 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-with st.spinner("⚡ Conectando ao Cartola FC e sincronizando pontos ao vivo..."):
-    df, rodada_atual = carregar_dados_liga()
-    df_vencedores = carregar_base_vencedores()
-
-# --- 6. VISUALIZAÇÃO E TABELAS ---
+# --- 7. VISUALIZAÇÃO E TABELAS ---
 if not df.empty:
     # KPI METRIC CARDS
     lider_geral = df.iloc[0]
