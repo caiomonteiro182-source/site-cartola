@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + Ajuste de Centralização Mobile
+# 2. Estilização Cyberpunk Neon + CSS Responsivo e Sprite Sheet da Grade
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -163,10 +163,14 @@ st.markdown("""
         min-width: 150px;
     }
 
-    .match-card img {
-        width: 32px !important;
-        height: 32px !important;
-        object-fit: contain !important;
+    /* ELEMENTO DE ESCUDO CORTADO DA SPRITE SHEET */
+    .escudo-sprite {
+        width: 36px;
+        height: 36px;
+        display: inline-block;
+        background-repeat: no-repeat;
+        background-size: 400% 500%;
+        flex-shrink: 0;
     }
 
     .match-score {
@@ -185,7 +189,7 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* CARD ESTILO PAINEL DE TIME */
+    /* CARDS DE ESTATÍSTICA */
     .box-m1 {
         background: rgba(10, 8, 19, 0.85);
         border-radius: 12px;
@@ -286,9 +290,8 @@ st.markdown("""
         margin: 15px 0 !important;
     }
 
-    /* --- CENTRALIZAÇÃO E AJUSTES PARA CELULAR (MOBILE) --- */
+    /* REGRAS MOBILE */
     @media (max-width: 768px) {
-        /* Centraliza a imagem do escudo e o contêiner no mobile */
         div[data-testid="stColumn"]:first-child {
             display: flex !important;
             justify-content: center !important;
@@ -356,7 +359,54 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Carregamento dos dados da Liga
+# 3. Mapeamento das posições da grade da imagem (4 colunas x 5 linhas)
+# Posições (Coluna, Linha): Colunas de 0 a 3 | Linhas de 0 a 4
+POSICOES_GRADE = {
+    # Linha 0
+    "CAP": (0, 0), "ATHLETICO-PR": (0, 0), "ATLÉTICO-PR": (0, 0),
+    "CAM": (1, 0), "ATLÉTICO-MG": (1, 0), "ATLETICO-MG": (1, 0),
+    "BAH": (2, 0), "BAHIA": (2, 0),
+    "BOT": (3, 0), "BOTAFOGO": (3, 0),
+    
+    # Linha 1
+    "RBB": (0, 1), "BRAGANTINO": (0, 1), "RED BULL BRAGANTINO": (0, 1),
+    "CHA": (1, 1), "CHAPECOENSE": (1, 1),
+    "COR": (2, 1), "CORINTHIANS": (2, 1),
+    "CFC": (3, 1), "CORITIBA": (3, 1),
+    
+    # Linha 2
+    "CRU": (0, 2), "CRUZEIRO": (0, 2),
+    "FLA": (1, 2), "FLAMENGO": (1, 2),
+    "FLU": (2, 2), "FLUMINENSE": (2, 2),
+    "GRE": (3, 2), "GRÊMIO": (3, 2), "GREMIO": (3, 2),
+    
+    # Linha 3
+    "INT": (0, 3), "INTERNACIONAL": (0, 3),
+    "MIR": (1, 3), "MIRASSOL": (1, 3),
+    "PAL": (2, 3), "PALMEIRAS": (2, 3),
+    "REM": (3, 3), "REMO": (3, 3),
+    
+    # Linha 4
+    "SAN": (0, 4), "SANTOS": (0, 4),
+    "SAO": (1, 4), "SÃO PAULO": (1, 4), "SAO PAULO": (1, 4),
+    "VAS": (2, 4), "VASCO": (2, 4),
+    "VIT": (3, 4), "VITÓRIA": (3, 4), "VITORIA": (3, 4),
+}
+
+def obter_estilo_sprite(nome_clube, sigla_clube):
+    nome_u = nome_clube.upper().strip()
+    sigla_u = sigla_clube.upper().strip()
+    
+    pos = POSICOES_GRADE.get(sigla_u) or POSICOES_GRADE.get(nome_u) or (0, 0)
+    col, lin = pos
+    
+    # Calcula a porcentagem do background-position para cortar a imagem 4x5
+    pos_x = (col / 3.0) * 100
+    pos_y = (lin / 4.0) * 100
+    
+    return f"background-image: url('app/static/escudos_times.png'); background-position: {pos_x:.1f}% {pos_y:.1f}%;"
+
+# 4. Carregamento dos dados da Liga
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -499,7 +549,7 @@ def carregar_dados_liga():
     
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 4. Contador de Mercado
+# 5. Contador de Mercado
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -532,7 +582,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Busca de partidas com Escudos da API do Cartola
+# 6. Busca de partidas e aplicação dos escudos recortados
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -553,18 +603,18 @@ def carregar_partidas_com_escudos(num_rodada):
                 nome_casa = clube_casa.get("nome", "").upper()
                 nome_vis = clube_vis.get("nome", "").upper()
                 
-                escudos_casa = clube_casa.get("escudos", {})
-                escudos_vis = clube_vis.get("escudos", {})
+                sigla_casa = clube_casa.get("sigla", nome_casa)
+                sigla_vis = clube_vis.get("sigla", nome_vis)
                 
-                escudo_casa = escudos_casa.get("60x60") or escudos_casa.get("45x45") or escudos_casa.get("30x30") or ""
-                escudo_vis = escudos_vis.get("60x60") or escudos_vis.get("45x45") or escudos_vis.get("30x30") or ""
+                style_casa = obter_estilo_sprite(nome_casa, sigla_casa)
+                style_vis = obter_estilo_sprite(nome_vis, sigla_vis)
                 
                 placar_casa = p.get("placar_oficial_mandante")
                 placar_vis = p.get("placar_oficial_visitante")
                 
                 jogos.append({
-                    "escudo_casa": escudo_casa,
-                    "escudo_vis": escudo_vis,
+                    "style_casa": style_casa,
+                    "style_vis": style_vis,
                     "nome_casa": nome_casa,
                     "nome_vis": nome_vis,
                     "placar_casa": placar_casa,
@@ -575,7 +625,7 @@ def carregar_partidas_com_escudos(num_rodada):
         pass
     return []
 
-# 6. Carregar Vencedores do Mês
+# 7. Carregar Vencedores do Mês
 @st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
@@ -592,7 +642,7 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 7. PAINEL FIXO DE JOGOS ---
+# --- 8. PAINEL FIXO COM ESCUDOS DA SUA ANEXO (GRADE 4x5) ---
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
@@ -605,9 +655,9 @@ if lista_partidas:
             
         card_item = (
             f'<div class="match-card">'
-            f'<img src="{j["escudo_casa"]}" title="{j["nome_casa"]}">'
+            f'<div class="escudo-sprite" style="{j["style_casa"]}" title="{j["nome_casa"]}"></div>'
             f'{placar_str}'
-            f'<img src="{j["escudo_vis"]}" title="{j["nome_vis"]}">'
+            f'<div class="escudo-sprite" style="{j["style_vis"]}" title="{j["nome_vis"]}"></div>'
             f'</div>'
         )
         cards_html_list.append(card_item)
@@ -625,7 +675,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 8. CABEÇALHO RESPONSIVO COM ESCUDO CENTRALIZADO NO MOBILE ---
+# --- 9. CABEÇALHO RESPONSIVO COM ESCUDO CENTRALIZADO NO MOBILE ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -667,7 +717,7 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# --- 9. CARD DETALHADO INSTANTÂNEO ---
+# --- 10. CARD DETALHADO INSTANTÂNEO ---
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
     
