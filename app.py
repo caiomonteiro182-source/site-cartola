@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + Banner do Mercado Embutido
+# 2. Estilização Cyberpunk Neon + Painel Fixo de Confrontos
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -108,35 +108,80 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* ESTILO DO LETREIRO (MARQUEE) NEON */
-    .ticker-container {
+    /* PAINEL FIXO DE JOGOS DENTRO DO TOPO DA PÁGINA */
+    .matches-panel-container {
         width: 100%;
         background: rgba(10, 8, 19, 0.85);
-        border: 1px solid #00f2ff;
-        border-radius: 8px;
-        box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
-        overflow: hidden;
-        white-space: nowrap;
-        padding: 8px 0;
-        margin-bottom: 20px;
+        border: 1px solid rgba(0, 242, 255, 0.3);
+        border-radius: 12px;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
+        padding: 12px 16px;
+        margin-bottom: 24px;
     }
 
-    .ticker-text {
-        display: inline-block;
-        padding-left: 100%;
-        animation: marquee 30s linear infinite;
+    .matches-panel-header {
         font-family: 'Rajdhani', sans-serif;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 700;
         color: #00f2ff;
-        text-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
         text-transform: uppercase;
-        letter-spacing: 1.5px;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    @keyframes marquee {
-        0% { transform: translate(0, 0); }
-        100% { transform: translate(-100%, 0); }
+    .matches-grid {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    /* Scrollbar estilizada para o painel de jogos */
+    .matches-grid::-webkit-scrollbar {
+        height: 6px;
+    }
+    .matches-grid::-webkit-scrollbar-thumb {
+        background: #a855f7;
+        border-radius: 4px;
+    }
+
+    .match-card {
+        flex: 0 0 auto;
+        background: rgba(18, 12, 38, 0.8);
+        border: 1px solid rgba(168, 85, 247, 0.3);
+        border-radius: 8px;
+        padding: 8px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-width: 170px;
+    }
+
+    .match-card img {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+    }
+
+    .match-score {
+        font-family: 'Teko', sans-serif;
+        font-size: 20px;
+        font-weight: bold;
+        color: #ffffff;
+        letter-spacing: 1px;
+        text-align: center;
+        min-width: 45px;
+    }
+
+    .match-vs {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13px;
+        color: #94a3b8;
+        font-weight: bold;
     }
 
     /* CARD ESTILO PAINEL DE TIME */
@@ -251,7 +296,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Função de Carregamento Ultra-Rápido
+# 3. Função de Carregamento Ultra-Rápido da Liga
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -394,7 +439,7 @@ def carregar_dados_liga():
     
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 4. Função para calcular a tag embutida do tempo do mercado (Apenas Horas e Minutos)
+# 4. Função para calcular o temporizador do mercado
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -427,9 +472,9 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Função para carregar os jogos reais do Campeonato Brasileiro
+# 5. Função para extrair os confrontos com Escudos Oficiais
 @st.cache_data(ttl=120)
-def carregar_partidas_br(num_rodada):
+def carregar_partidas_com_escudos(num_rodada):
     try:
         res = requests.get(f"https://api.cartola.globo.com/partidas/{num_rodada}", headers=HEADERS, timeout=4)
         if res.status_code == 200:
@@ -437,26 +482,32 @@ def carregar_partidas_br(num_rodada):
             partidas = dados.get("partidas", [])
             clubes = dados.get("clubes", {})
             
-            jogos_formatados = []
+            jogos = []
             for p in partidas:
                 id_casa = str(p.get("clube_casa_id"))
                 id_vis = str(p.get("clube_visitante_id"))
                 
-                nome_casa = clubes.get(id_casa, {}).get("nome", "Mandante").upper()
-                nome_vis = clubes.get(id_vis, {}).get("nome", "Visitante").upper()
+                clube_casa = clubes.get(id_casa, {})
+                clube_vis = clubes.get(id_vis, {})
+                
+                escudo_casa = clube_casa.get("escudos", {}).get("45x45", "")
+                escudo_vis = clube_vis.get("escudos", {}).get("45x45", "")
                 
                 placar_casa = p.get("placar_oficial_mandante")
                 placar_vis = p.get("placar_oficial_visitante")
                 
-                if placar_casa is not None and placar_vis is not None:
-                    jogos_formatados.append(f"{nome_casa} {placar_casa} x {placar_vis} {nome_vis}")
-                else:
-                    jogos_formatados.append(f"{nome_casa} x {nome_vis} (A JOGAR)")
-            
-            return " • ".join(jogos_formatados)
+                jogos.append({
+                    "escudo_casa": escudo_casa,
+                    "escudo_vis": escudo_vis,
+                    "nome_casa": clube_casa.get("nome", "").upper(),
+                    "nome_vis": clube_vis.get("nome", "").upper(),
+                    "placar_casa": placar_casa,
+                    "placar_vis": placar_vis
+                })
+            return jogos
     except:
         pass
-    return "RESULTADOS DO BRASILEIRÃO EM ATUALIZAÇÃO"
+    return []
 
 # 6. Função para carregar a base de vencedores do mês
 @st.cache_data(ttl=120)
@@ -473,13 +524,37 @@ def carregar_base_vencedores():
 # Carregamento dos dados
 df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
-jogos_brasileirao = carregar_partidas_br(rodada_atual)
+lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 7. LETREIRO NEON (Ícone alterado para Bola de Futebol ⚽) ---
-status_tag = "🔴 AO VIVO" if status_mercado == 2 else "🟢 MERCADO ABERTO"
-texto_ticker = f"⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]: {jogos_brasileirao} • ⚽ BLACK GUYS LEAGUE"
+# --- 7. PAINEL FIXO DE JOGOS COM ESCUDOS OFICIAIS ---
+status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
-st.markdown(f'<div class="ticker-container"><div class="ticker-text">{texto_ticker}</div></div>', unsafe_allow_html=True)
+if lista_partidas:
+    cards_html = ""
+    for j in lista_partidas:
+        if j["placar_casa"] is not None and j["placar_vis"] is not None:
+            placar_str = f'<div class="match-score">{j["placar_casa"]} x {j["placar_vis"]}</div>'
+        else:
+            placar_str = '<div class="match-vs">VS</div>'
+            
+        cards_html += f"""
+        <div class="match-card">
+            <img src="{j['escudo_casa']}" title="{j['nome_casa']}">
+            {placar_str}
+            <img src="{j['escudo_vis']}" title="{j['nome_vis']}">
+        </div>
+        """
+
+    st.markdown(f"""
+        <div class="matches-panel-container">
+            <div class="matches-panel-header">
+                ⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]
+            </div>
+            <div class="matches-grid">
+                {cards_html}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # --- 8. CABEÇALHO, LOGO, TÍTULO + TEMPORIZADOR NA FRENTE ---
 col_logo, col_title = st.columns([1, 4])
