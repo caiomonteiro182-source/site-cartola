@@ -12,17 +12,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + Painel Fixo de Confrontos
+# 2. Estilização Cyberpunk Neon + CSS Responsivo (Mobile First / Media Queries)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
 
+    /* Fundo Geral Escuro / Cyberpunk */
     .stApp {
         background: radial-gradient(circle at top center, #1e0b36 0%, #0a0813 60%, #030206 100%);
         color: #f1f5f9;
         font-family: 'Rajdhani', sans-serif;
     }
 
+    /* Cabeçalhos Neon */
     h1 {
         font-family: 'Teko', sans-serif !important;
         font-size: 52px !important;
@@ -32,7 +34,7 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         letter-spacing: 2px;
         margin-bottom: 0px !important;
-        display: inline-block;
+        line-height: 1 !important;
     }
 
     h2, h3 {
@@ -42,54 +44,66 @@ st.markdown("""
         font-weight: 700;
     }
 
+    /* CONTÊINER DO TÍTULO + TEMPORIZADOR */
     .header-title-container {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 12px;
         flex-wrap: wrap;
     }
 
+    /* ESTILO DO BANNER CONTADOR */
     .market-timer-inline-open {
         background: #ccff00;
         color: #0a0813;
         font-family: 'Teko', sans-serif;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: bold;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        padding: 4px 14px;
+        letter-spacing: 1px;
+        padding: 4px 12px;
         border-radius: 8px;
-        box-shadow: 0 0 12px rgba(204, 255, 0, 0.6);
+        box-shadow: 0 0 12px rgba(204, 255, 0, 0.5);
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        white-space: nowrap;
     }
 
     .market-timer-inline-closed {
         background: #ef4444;
         color: #ffffff;
         font-family: 'Teko', sans-serif;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: bold;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        padding: 4px 14px;
+        letter-spacing: 1px;
+        padding: 4px 12px;
         border-radius: 8px;
         box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        white-space: nowrap;
+    }
+
+    /* Estilo do Subtítulo e Link */
+    .subtitle-header {
+        color: #c084fc;
+        font-weight: 700;
+        margin-top: 4px;
+        margin-bottom: 6px;
+        font-size: 15px;
     }
 
     .link-liga {
         display: inline-block;
         color: #00f2ff !important;
         font-weight: 700;
-        font-size: 15px;
+        font-size: 14px;
         text-decoration: none;
         letter-spacing: 1px;
-        margin-top: 4px;
-        padding: 4px 12px;
+        padding: 6px 14px;
         background: rgba(0, 242, 255, 0.08);
         border: 1px solid rgba(0, 242, 255, 0.4);
         border-radius: 6px;
@@ -104,7 +118,7 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
         padding: 12px 16px;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
     }
 
     .matches-panel-header {
@@ -114,7 +128,7 @@ st.markdown("""
         color: #00f2ff;
         text-transform: uppercase;
         letter-spacing: 1px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -122,13 +136,14 @@ st.markdown("""
 
     .matches-grid {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         overflow-x: auto;
         padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
     }
 
     .matches-grid::-webkit-scrollbar {
-        height: 6px;
+        height: 5px;
     }
     .matches-grid::-webkit-scrollbar-thumb {
         background: #a855f7;
@@ -140,46 +155,44 @@ st.markdown("""
         background: rgba(18, 12, 38, 0.8);
         border: 1px solid rgba(168, 85, 247, 0.3);
         border-radius: 8px;
-        padding: 10px 16px;
+        padding: 8px 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        min-width: 180px;
+        gap: 10px;
+        min-width: 150px;
     }
 
     .match-card img {
-        width: 38px !important;
-        height: 38px !important;
-        max-width: 38px !important;
-        max-height: 38px !important;
+        width: 32px !important;
+        height: 32px !important;
         object-fit: contain !important;
-        display: block !important;
     }
 
     .match-score {
         font-family: 'Teko', sans-serif;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: bold;
         color: #ffffff;
         letter-spacing: 1px;
         text-align: center;
-        min-width: 45px;
     }
 
     .match-vs {
         font-family: 'Rajdhani', sans-serif;
-        font-size: 13px;
+        font-size: 12px;
         color: #94a3b8;
         font-weight: bold;
     }
 
+    /* CARD ESTILO PAINEL DE TIME */
     .box-m1 {
         background: rgba(10, 8, 19, 0.85);
         border-radius: 12px;
         padding: 16px;
         border-left: 5px solid #00f2ff;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        margin-bottom: 10px;
     }
 
     .box-m2 {
@@ -188,6 +201,7 @@ st.markdown("""
         padding: 16px;
         border-left: 5px solid #22c55e;
         box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+        margin-bottom: 10px;
     }
 
     .lbl-title {
@@ -200,65 +214,62 @@ st.markdown("""
 
     .val-num {
         font-family: 'Teko', sans-serif;
-        font-size: 46px;
+        font-size: 42px;
         font-weight: bold;
         color: #ffffff;
         line-height: 1;
-        margin-right: 10px;
+        margin-right: 8px;
     }
 
     .txt-up {
         color: #22c55e !important;
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
     }
 
     .txt-down {
         color: #ef4444 !important;
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
     }
 
     div[data-testid="stMetric"] {
         background: rgba(18, 12, 38, 0.75);
         border: 2px solid #a855f7;
-        box-shadow: 0 0 15px rgba(168, 85, 247, 0.35), inset 0 0 10px rgba(0, 242, 255, 0.1);
-        padding: 16px;
-        border-radius: 14px;
+        box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-bottom: 8px;
     }
 
     button[data-baseweb="tab"] {
         background-color: rgba(15, 23, 42, 0.6) !important;
         color: #94a3b8 !important;
-        font-size: 18px !important;
+        font-size: 16px !important;
         font-family: 'Rajdhani', sans-serif !important;
         font-weight: 700 !important;
         border-radius: 8px 8px 0px 0px;
-        padding: 10px 20px !important;
-        border: 1px solid rgba(168, 85, 247, 0.2) !important;
+        padding: 8px 14px !important;
     }
 
     button[aria-selected="true"] {
         background: linear-gradient(180deg, rgba(168, 85, 247, 0.3) 0%, rgba(0, 242, 255, 0.1) 100%) !important;
         color: #00f2ff !important;
         border-bottom: 3px solid #00f2ff !important;
-        box-shadow: 0 0 12px rgba(0, 242, 255, 0.5);
     }
 
     div[data-testid="stDataFrame"] {
         border: 1px solid #a855f7;
         border-radius: 12px;
-        box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
         overflow: hidden;
     }
 
     .card-vencedor {
         background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
         border: 2px solid #eab308;
-        box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
         border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
         text-align: center;
     }
 
@@ -266,13 +277,63 @@ st.markdown("""
         background: rgba(18, 12, 38, 0.7);
         border: 1px solid #00f2ff;
         border-radius: 10px;
-        padding: 15px;
+        padding: 12px;
         margin-bottom: 10px;
     }
 
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
-        box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+        margin: 15px 0 !important;
+    }
+
+    /* --- REGRAS DE ADAPTAÇÃO PARA CELULARES (MOBILE) --- */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 38px !important;
+            text-align: center;
+            width: 100%;
+        }
+
+        .header-title-container {
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .market-timer-inline-open, .market-timer-inline-closed {
+            font-size: 18px;
+            padding: 4px 10px;
+            margin-top: 4px;
+        }
+
+        .subtitle-header {
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .header-col-wrapper {
+            text-align: center;
+        }
+
+        .link-liga {
+            width: 100%;
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .val-num {
+            font-size: 36px;
+        }
+
+        .matches-panel-container {
+            padding: 10px;
+        }
+
+        /* Centralizar imagem do logo quando em telas pequenas */
+        div[data-testid="stImage"] {
+            display: flex;
+            justify-content: center;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -458,7 +519,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 5. Busca de partidas com Escudos da API do Cartola (100% livres de bloqueio CORS)
+# 5. Busca de partidas com Escudos da API do Cartola
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -482,7 +543,6 @@ def carregar_partidas_com_escudos(num_rodada):
                 escudos_casa = clube_casa.get("escudos", {})
                 escudos_vis = clube_vis.get("escudos", {})
                 
-                # Seleciona preferencialmente a melhor resolução fornecida pela API
                 escudo_casa = escudos_casa.get("60x60") or escudos_casa.get("45x45") or escudos_casa.get("30x30") or ""
                 escudo_vis = escudos_vis.get("60x60") or escudos_vis.get("45x45") or escudos_vis.get("30x30") or ""
                 
@@ -519,7 +579,7 @@ df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 7. PAINEL FIXO COM ESCUDOS OFICIAIS DA API CARTOLA FC ---
+# --- 7. PAINEL FIXO DE JOGOS ---
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
@@ -552,7 +612,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 8. CABEÇALHO ---
+# --- 8. CABEÇALHO RESPONSIVO ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -563,7 +623,7 @@ with col_logo:
             break
             
     if logo_path:
-        st.image(logo_path, width=150)
+        st.image(logo_path, width=130)
     else:
         st.title("⚽")
 
@@ -571,19 +631,20 @@ with col_title:
     badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
     
     st.markdown(f"""
-        <div class="header-title-container">
-            <h1>BLACK GUYS LEAGUE</h1>
-            {badge_timer}
+        <div class="header-col-wrapper">
+            <div class="header-title-container">
+                <h1>BLACK GUYS LEAGUE</h1>
+                {badge_timer}
+            </div>
+            <div class="subtitle-header">TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</div>
+            <a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">🔗 Acessar Liga Oficial no Cartola FC</a>
         </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown("<h4 style='color: #c084fc; margin-top: -10px; margin-bottom: 2px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
-    st.markdown('<a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">🔗 Acessar Liga Oficial no Cartola FC</a>', unsafe_allow_html=True)
 
 st.divider()
 
 # Botão de Atualização Manual
-col_status, col_btn = st.columns([4, 1])
+col_status, col_btn = st.columns([3, 1])
 with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
@@ -624,7 +685,7 @@ if not df.empty:
             f'<div style="display:flex; align-items:baseline; margin-top:5px;">'
             f'<span class="val-num">{pt_atual:.2f}</span>{html_diff_pontos}'
             f'</div>'
-            f'<div style="margin-top:10px; font-size:14px; color:#94a3b8;">'
+            f'<div style="margin-top:8px; font-size:13px; color:#94a3b8;">'
             f'MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">{media_pontos_liga:.2f} pts</strong>'
             f'</div>'
             f'</div>',
@@ -638,7 +699,7 @@ if not df.empty:
             f'<div style="display:flex; align-items:baseline; margin-top:5px;">'
             f'<span class="val-num">C$ {dados_time["Patrimônio (C$)"]:.2f}</span>{html_val_cartoletas}'
             f'</div>'
-            f'<div style="margin-top:10px; font-size:14px; color:#94a3b8;">'
+            f'<div style="margin-top:8px; font-size:13px; color:#94a3b8;">'
             f'MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong>'
             f'</div>'
             f'</div>',
