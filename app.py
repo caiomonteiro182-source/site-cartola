@@ -129,7 +129,7 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* Card de Vencedor do Mês */
+    /* Card de Vencedor e Dicas */
     .card-vencedor {
         background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
         border: 2px solid #eab308;
@@ -140,6 +140,14 @@ st.markdown("""
         text-align: center;
     }
 
+    .card-dica {
+        background: rgba(18, 12, 38, 0.7);
+        border: 1px solid #00f2ff;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
@@ -147,7 +155,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados da Liga
+# 3. Função de Carregamento de Dados da Liga (Incluindo Patrimônio e Valorização)
 @st.cache_data(ttl=60)
 def carregar_dados_liga():
     headers = {
@@ -198,17 +206,25 @@ def carregar_dados_liga():
             time_id = None
 
         pt_rodada = 0.0
+        patrimonio = 100.0  # Valor padrão inicial
+        valorizacao = 0.0
         
         if time_id:
             try:
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
                 if res_p.status_code == 200:
                     dados = res_p.json()
+                    
+                    # Pontuação
                     p_raw = dados.get("pontos", 0)
                     if isinstance(p_raw, dict):
                         pt_rodada = float(p_raw.get("rodada", 0))
                     elif isinstance(p_raw, (int, float)):
                         pt_rodada = float(p_raw)
+                    
+                    # Patrimônio e Valorização oficial da API
+                    patrimonio = float(dados.get("patrimonio", 100.0))
+                    valorizacao = float(dados.get("valorizacao", 0.0))
             except:
                 pass
         
@@ -221,7 +237,9 @@ def carregar_dados_liga():
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
             "Total": round(total_acumulado, 2),
-            "Última Rodada": round(pt_rodada, 2)
+            "Última Rodada": round(pt_rodada, 2),
+            "Patrimônio (C$)": round(patrimonio, 2),
+            "Valorização (C$)": round(valorizacao, 2)
         })
 
     df = pd.DataFrame(lista_times)
@@ -335,13 +353,12 @@ if not df.empty:
 
     st.write("")
 
-    # ABAS
-    tab1, tab2, tab3 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas"])
+    # ABAS (Com inclusão do Guia de Valorização na Tab 4)
+    tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas", "💰 Guia de Valorização"])
 
     with tab1:
         st.subheader("⚡ Tabela de Posições da Liga")
         
-        # Seleção entre Geral x Última Rodada
         visao = st.radio(
             "Selecione a visualização:",
             ["Classificação Geral (Total Acumulado)", "Pontuação da Última Rodada"],
@@ -370,13 +387,10 @@ if not df.empty:
         st.caption("Premiações e mitações mês a mês na Black Guys League.")
         
         if df_vencedores is not None and not df_vencedores.empty:
-            # Tabela resumida
             st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
-            
             st.write("")
             st.divider()
             
-            # Cards em colunas para dar visual moderno
             cols_v = st.columns(3)
             idx_col = 0
             
@@ -423,6 +437,64 @@ if not df.empty:
             y="Total",
             use_container_width=True
         )
+
+    with tab4:
+        st.subheader("💰 Painel de Patrimônio & Valorização da Liga")
+        st.caption("Acompanhe quem está acumalando mais cartoletas (C$) na temporada.")
+
+        df_patrimonio = df.sort_values(by="Patrimônio (C$)", ascending=False).reset_index(drop=True)
+        df_patrimonio["Rank Patrimônio"] = df_patrimonio.index + 1
+
+        mais_rico = df_patrimonio.iloc[0]
+        maior_val = df.sort_values(by="Valorização (C$)", ascending=False).iloc[0]
+
+        v1, v2 = st.columns(2)
+        v1.metric("💎 TIME MAIS RICO DA LIGA", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
+        v2.metric("📈 MAIOR VALORIZAÇÃO NA RODADA", f"{maior_val['Time']}", f"C$ {maior_val['Valorização (C$)']}")
+
+        st.write("")
+        st.markdown("### 📊 Tabela de Cartoletas dos Participantes")
+        st.dataframe(
+            df_patrimonio[["Rank Patrimônio", "Time", "Cartoleiro", "Patrimônio (C$)", "Valorização (C$)"]],
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.divider()
+
+        st.markdown("### 📘 Guia Prático de Valorização no Cartola FC")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("""
+            <div class="card-dica">
+                <h4 style="color: #00f2ff; margin-top:0;">1ª Rodada (A Regra dos 45%)</h4>
+                <p>Na 1ª rodada do campeonato, para um jogador valorizar ele precisa fazer aproximadamente <strong>45% do valor dele em pontos</strong>.</p>
+                <ul>
+                    <li>Jogador de C$ 10,00 precisa de ~ 4,5 pontos.</li>
+                    <li>Escalar jogadores mais baratos (C$ 5 a C$ 8) facilita a valorização.</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <div class="card-dica">
+                <h4 style="color: #00f2ff; margin-top:0;">2ª Rodada (A Regra da Média)</h4>
+                <p>Na 2ª rodada o sistema calcula a <strong>média das duas rodadas</strong>. Jogadores que desvalorizaram na 1ª rodada mas pontuarem bem na 2ª tendem a valorizar bastante.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c2:
+            st.markdown("""
+            <div class="card-dica">
+                <h4 style="color: #a855f7; margin-top:0;">3ª Rodada em diante (O Mínimo para Valorizar)</h4>
+                <p>A partir da 3ª rodada o algoritmo entra no formato padrão: a valorização depende do valor atual do atleta e do seu desempenho recente.</p>
+                <ul>
+                    <li>Jogadores que desvalorizaram na rodada anterior costumam ter um pontuação mínima menor para voltar a valorizar.</li>
+                    <li>Evite escalar jogadores muito caros após uma grande pontuação se o seu foco for ganhar cartoletas.</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.divider()
     st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sincronizado automaticamente via API Cartola FC.")
