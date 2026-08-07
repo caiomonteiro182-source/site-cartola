@@ -155,7 +155,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados da Liga (Incluindo Patrimônio e Valorização)
+# 3. Função de Carregamento de Dados da Liga (Calculando a Valorização)
 @st.cache_data(ttl=60)
 def carregar_dados_liga():
     headers = {
@@ -206,8 +206,8 @@ def carregar_dados_liga():
             time_id = None
 
         pt_rodada = 0.0
-        patrimonio = 100.0  # Valor padrão inicial
-        valorizacao = 0.0
+        patrimonio = 100.0  # Valor padrão
+        valorizacao_rodada = 0.0
         
         if time_id:
             try:
@@ -222,9 +222,11 @@ def carregar_dados_liga():
                     elif isinstance(p_raw, (int, float)):
                         pt_rodada = float(p_raw)
                     
-                    # Patrimônio e Valorização oficial da API
+                    # Patrimônio atual
                     patrimonio = float(dados.get("patrimonio", 100.0))
-                    valorizacao = float(dados.get("valorizacao", 0.0))
+                    
+                    # Captura direta do valorizado na última rodada vindo do JSON da API
+                    valorizacao_rodada = float(dados.get("valorizacao", 0.0))
             except:
                 pass
         
@@ -239,7 +241,7 @@ def carregar_dados_liga():
             "Total": round(total_acumulado, 2),
             "Última Rodada": round(pt_rodada, 2),
             "Patrimônio (C$)": round(patrimonio, 2),
-            "Valorização (C$)": round(valorizacao, 2)
+            "Valorização (C$)": round(valorizacao_rodada, 2)
         })
 
     df = pd.DataFrame(lista_times)
@@ -353,7 +355,7 @@ if not df.empty:
 
     st.write("")
 
-    # ABAS (Com inclusão do Guia de Valorização na Tab 4)
+    # ABAS
     tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas", "💰 Guia de Valorização"])
 
     with tab1:
@@ -439,30 +441,47 @@ if not df.empty:
         )
 
     with tab4:
-        st.subheader("💰 Painel de Patrimônio & Valorização da Liga")
-        st.caption("Acompanhe quem está acumalando mais cartoletas (C$) na temporada.")
+        st.subheader("💰 Painel de Patrimônio & Valorização")
+        st.caption("Veja o patrimônio total e a variação exata da última rodada de cada participante.")
 
-        df_patrimonio = df.sort_values(by="Patrimônio (C$)", ascending=False).reset_index(drop=True)
-        df_patrimonio["Rank Patrimônio"] = df_patrimonio.index + 1
+        # Ordenar por maior valorização da última rodada
+        df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
+        df_val["Rank Valorização"] = df_val.index + 1
 
-        mais_rico = df_patrimonio.iloc[0]
-        maior_val = df.sort_values(by="Valorização (C$)", ascending=False).iloc[0]
+        mais_rico = df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]
+        maior_val = df_val.iloc[0]
 
         v1, v2 = st.columns(2)
-        v1.metric("💎 TIME MAIS RICO DA LIGA", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
-        v2.metric("📈 MAIOR VALORIZAÇÃO NA RODADA", f"{maior_val['Time']}", f"C$ {maior_val['Valorização (C$)']}")
+        v1.metric("💎 TIME MAIS RICO (TOTAL)", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
+        
+        # Formatação do card do maior valorizador
+        val_txt = f"+C$ {maior_val['Valorização (C$)']}" if maior_val['Valorização (C$)'] > 0 else f"C$ {maior_val['Valorização (C$)']}"
+        v2.metric("📈 MAIOR VALORIZAÇÃO DA RODADA", f"{maior_val['Time']}", val_txt)
 
         st.write("")
-        st.markdown("### 📊 Tabela de Cartoletas dos Participantes")
+        st.markdown("### 📊 Variação de Cartoletas na Última Rodada")
+        
+        # Tabela formatada com destaque na Valorização da Rodada
         st.dataframe(
-            df_patrimonio[["Rank Patrimônio", "Time", "Cartoleiro", "Patrimônio (C$)", "Valorização (C$)"]],
+            df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)"]],
+            column_config={
+                "Valorização (C$)": st.column_config.NumberColumn(
+                    "Valorização na Rodada (C$)",
+                    help="Diferença de cartoletas ganhas ou perdidas na última rodada",
+                    format="C$ %.2f"
+                ),
+                "Patrimônio (C$)": st.column_config.NumberColumn(
+                    "Patrimônio Total (C$)",
+                    format="C$ %.2f"
+                )
+            },
             use_container_width=True,
             hide_index=True
         )
 
         st.divider()
 
-        st.markdown("### 📘 Guia Prático de Valorização no Cartola FC")
+        st.markdown("### 📘 Guia Prático de Valorização")
         
         c1, c2 = st.columns(2)
         with c1:
@@ -487,7 +506,7 @@ if not df.empty:
         with c2:
             st.markdown("""
             <div class="card-dica">
-                <h4 style="color: #a855f7; margin-top:0;">3ª Rodada em diante (O Mínimo para Valorizar)</h4>
+                <h4 style="color: #a855f7; margin-top:0;">3ª Rodada em diante (Mínimo para Valorizar)</h4>
                 <p>A partir da 3ª rodada o algoritmo entra no formato padrão: a valorização depende do valor atual do atleta e do seu desempenho recente.</p>
                 <ul>
                     <li>Jogadores que desvalorizaram na rodada anterior costumam ter um pontuação mínima menor para voltar a valorizar.</li>
