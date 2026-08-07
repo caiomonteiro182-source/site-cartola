@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon + CSS Responsivo (Mobile First / Media Queries)
+# 2. Estilização Cyberpunk Neon + Ajuste de Centralização Mobile
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -286,8 +286,27 @@ st.markdown("""
         margin: 15px 0 !important;
     }
 
-    /* --- REGRAS DE ADAPTAÇÃO PARA CELULARES (MOBILE) --- */
+    /* --- CENTRALIZAÇÃO E AJUSTES PARA CELULAR (MOBILE) --- */
     @media (max-width: 768px) {
+        /* Centraliza a imagem do escudo e o contêiner no mobile */
+        div[data-testid="stColumn"]:first-child {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+            width: 100% !important;
+        }
+
+        div[data-testid="stImage"] {
+            display: flex !important;
+            justify-content: center !important;
+            margin: 0 auto 10px auto !important;
+        }
+
+        div[data-testid="stImage"] img {
+            margin: 0 auto !important;
+        }
+
         h1 {
             font-size: 38px !important;
             text-align: center;
@@ -327,12 +346,6 @@ st.markdown("""
 
         .matches-panel-container {
             padding: 10px;
-        }
-
-        /* Centralizar imagem do logo quando em telas pequenas */
-        div[data-testid="stImage"] {
-            display: flex;
-            justify-content: center;
         }
     }
     </style>
@@ -612,7 +625,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 8. CABEÇALHO RESPONSIVO ---
+# --- 8. CABEÇALHO RESPONSIVO COM ESCUDO CENTRALIZADO NO MOBILE ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
