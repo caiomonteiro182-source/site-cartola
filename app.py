@@ -172,7 +172,7 @@ def obter_pontuados_ao_vivo():
         pass
     return {}
 
-# 3. Função de Carregamento de Dados da Liga com Suporte Ao Vivo
+# 3. Função de Carregamento de Dados da Liga
 @st.cache_data(ttl=30)
 def carregar_dados_liga():
     rodada_cartola = 20
@@ -202,7 +202,6 @@ def carregar_dados_liga():
         return pd.DataFrame(), rodada_cartola, status_mercado
 
     atletas_ao_vivo = {}
-    # Se o mercado estiver FECHADO (rodada rolando em tempo real = status 2)
     if status_mercado == 2:
         atletas_ao_vivo = obter_pontuados_ao_vivo()
 
@@ -228,13 +227,11 @@ def carregar_dados_liga():
         
         if time_id:
             try:
-                # 1. Busca os dados do time
                 res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=HEADERS, timeout=5)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     patrimonio = float(dados.get("patrimonio", 100.0))
                     
-                    # Se os jogos estão acontecendo AGORA (Ao Vivo)
                     if status_mercado == 2 and atletas_ao_vivo:
                         atletas_escalados = dados.get("atletas", [])
                         capitao_id = dados.get("capitao_id", None)
@@ -249,7 +246,6 @@ def carregar_dados_liga():
                                 p_atleta = float(info_v.get("pontuacao", 0.0))
                                 v_atleta = float(info_v.get("variacao_num", 0.0))
                                 
-                                # Aplica o multiplicador do Capitão (2x)
                                 if capitao_id and int(a_id) == int(capitao_id):
                                     p_atleta *= 2
                                     
@@ -259,7 +255,6 @@ def carregar_dados_liga():
                         pt_rodada = pontos_vivo
                         valorizacao_rodada = val_vivo
                     else:
-                        # Mercado Aberto / Consolidação pós-rodada
                         p_raw = dados.get("pontos", 0)
                         if isinstance(p_raw, dict):
                             pt_rodada = float(p_raw.get("rodada", 0))
@@ -270,7 +265,6 @@ def carregar_dados_liga():
                         if val_api is not None and float(val_api) != 0.0:
                             valorizacao_rodada = float(val_api)
                         else:
-                            # Busca variação da última rodada nos atletas
                             rodada_alvo = rodada_cartola - 1
                             res_at = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_alvo}", headers=HEADERS, timeout=5)
                             if res_at.status_code == 200:
@@ -281,7 +275,6 @@ def carregar_dados_liga():
             except:
                 pass
         
-        # Se ao vivo, soma o ao vivo com o histórico acumulado
         if status_mercado == 2:
             total_acumulado = pontos_base_historico + pt_rodada
         else:
@@ -409,7 +402,8 @@ if not df.empty:
 
     st.write("")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas", "💰 Guia de Valorização"])
+    # APENAS 3 ABAS (Sem a aba de Gráficos)
+    tab1, tab2, tab3 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "💰 Guia de Valorização"])
 
     with tab1:
         st.subheader("⚡ Tabela de Posições e Desempenho da Liga")
@@ -485,31 +479,6 @@ if not df.empty:
             st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
 
     with tab3:
-        st.subheader("🎯 Pontos Ganhos na Última Rodada")
-        st.caption("Rendimento em pontos isolados conquistados por cada participante.")
-        
-        df_rodada_sorted = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=True)
-        st.bar_chart(
-            df_rodada_sorted,
-            x="Time",
-            y="Pontos Ganhos (Última Rodada)",
-            color="Time",
-            use_container_width=True
-        )
-
-        st.divider()
-
-        st.subheader("🔥 Pontuação Total Acumulada")
-        st.caption("Visão geral do volume total de pontos acumulados no campeonato.")
-        
-        st.bar_chart(
-            df.sort_values(by="Total Acumulado", ascending=True),
-            x="Time",
-            y="Total Acumulado",
-            use_container_width=True
-        )
-
-    with tab4:
         st.subheader("💰 Painel de Patrimônio & Valorização Ao Vivo")
         st.caption("Diferença de cartoletas (C$) ganhas/perdidas na rodada e patrimônio acumulado.")
 
