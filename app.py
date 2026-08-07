@@ -97,41 +97,48 @@ st.markdown("""
     }
 
     /* CARD ESTILO PAINEL DE TIME */
-    .team-detail-card {
-        background: rgba(18, 12, 38, 0.85);
-        border: 2px solid #00f2ff;
-        box-shadow: 0 0 20px rgba(0, 242, 255, 0.25);
-        border-radius: 14px;
-        padding: 20px;
-        margin-top: 15px;
-        margin-bottom: 25px;
+    .box-m1 {
+        background: rgba(10, 8, 19, 0.85);
+        border-radius: 12px;
+        padding: 16px;
+        border-left: 5px solid #00f2ff;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
     }
 
-    .detail-title {
-        font-size: 14px;
+    .box-m2 {
+        background: rgba(10, 8, 19, 0.85);
+        border-radius: 12px;
+        padding: 16px;
+        border-left: 5px solid #22c55e;
+        box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+    }
+
+    .lbl-title {
+        font-size: 13px;
         font-weight: bold;
         color: #94a3b8;
         text-transform: uppercase;
         letter-spacing: 1px;
     }
 
-    .detail-value {
+    .val-num {
         font-family: 'Teko', sans-serif;
-        font-size: 48px;
+        font-size: 46px;
         font-weight: bold;
         color: #ffffff;
         line-height: 1;
+        margin-right: 10px;
     }
 
-    .val-up {
+    .txt-up {
         color: #22c55e !important;
-        font-size: 26px;
+        font-size: 24px;
         font-weight: bold;
     }
 
-    .val-down {
+    .txt-down {
         color: #ef4444 !important;
-        font-size: 26px;
+        font-size: 24px;
         font-weight: bold;
     }
 
@@ -399,11 +406,7 @@ jogos_brasileirao = carregar_partidas_br(rodada_atual)
 status_tag = "🔴 AO VIVO" if status_mercado == 2 else "🟢 MERCADO ABERTO"
 texto_ticker = f"⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE"
 
-st.markdown(f"""
-    <div class="ticker-container">
-        <div class="ticker-text">{texto_ticker}</div>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(f'<div class="ticker-container"><div class="ticker-text">{texto_ticker}</div></div>', unsafe_allow_html=True)
 
 # --- 7. CABEÇALHO, LOGO & LINK DA LIGA ---
 col_logo, col_title = st.columns([1, 4])
@@ -423,11 +426,7 @@ with col_logo:
 with col_title:
     st.title("BLACK GUYS LEAGUE")
     st.markdown("<h4 style='color: #c084fc; margin-top: -10px; margin-bottom: 2px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
-    st.markdown("""
-        <a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">
-            🔗 Acessar Liga Oficial no Cartola FC
-        </a>
-    """, unsafe_allow_html=True)
+    st.markdown('<a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">🔗 Acessar Liga Oficial no Cartola FC</a>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -458,52 +457,49 @@ if not df.empty:
     diff_pontos = pt_atual - pt_ant
     
     if diff_pontos >= 0:
-        html_diff_pontos = f'<span class="val-up">↑ {diff_pontos:.2f}</span>'
+        html_diff_pontos = f'<span class="txt-up">↑ {diff_pontos:.2f}</span>'
     else:
-        html_diff_pontos = f'<span class="val-down">↓ {abs(diff_pontos):.2f}</span>'
+        html_diff_pontos = f'<span class="txt-down">↓ {abs(diff_pontos):.2f}</span>'
         
     val_cartoletas = dados_time["Valorização (C$)"]
     if val_cartoletas >= 0:
-        html_val_cartoletas = f'<span class="val-up">↑ {val_cartoletas:.2f}</span>'
+        html_val_cartoletas = f'<span class="txt-up">↑ {val_cartoletas:.2f}</span>'
     else:
-        html_val_cartoletas = f'<span class="val-down">↓ {abs(val_cartoletas):.2f}</span>'
+        html_val_cartoletas = f'<span class="txt-down">↓ {abs(val_cartoletas):.2f}</span>'
 
-    # Bloco renderizado com unsafe_allow_html=True ativo
-    card_html = f"""
-        <div class="team-detail-card">
-            <div style="border-bottom: 1px solid rgba(0, 242, 255, 0.2); padding-bottom: 12px; margin-bottom: 16px;">
-                <h3 style="margin: 0; color: #00f2ff;">⚽ {dados_time['Time']}</h3>
-                <p style="margin: 0; color: #c084fc; font-weight: bold;">Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>
-            </div>
-            
-            <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-                <!-- BLOCO 1: PONTUAÇÃO -->
-                <div style="flex: 1; min-width: 250px; background: rgba(10, 8, 19, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid #00f2ff;">
-                    <div class="detail-title">⚽ ÚLTIMA PONTUAÇÃO</div>
-                    <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 5px;">
-                        <span class="detail-value">{pt_atual:.2f}</span>
-                        {html_diff_pontos}
-                    </div>
-                    <div style="margin-top: 10px; font-size: 14px; color: #94a3b8;">
-                        MÉDIA DOS CARTOLEIROS: <strong style="color: #f1f5f9;">{media_pontos_liga:.2f} pts</strong>
-                    </div>
-                </div>
-                
-                <!-- BLOCO 2: PATRIMÔNIO -->
-                <div style="flex: 1; min-width: 250px; background: rgba(10, 8, 19, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
-                    <div class="detail-title">💰 PATRIMÔNIO</div>
-                    <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 5px;">
-                        <span class="detail-value">C$ {dados_time['Patrimônio (C$)']:.2f}</span>
-                        {html_val_cartoletas}
-                    </div>
-                    <div style="margin-top: 10px; font-size: 14px; color: #94a3b8;">
-                        MÉDIA DOS CARTOLEIROS: <strong style="color: #f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-    """
-    st.markdown(card_html, unsafe_allow_html=True)
+    # RENDERIZAÇÃO ESTÁVEL DO CARD DE PERFORMANCE
+    st.markdown(f"<h3 style='margin-bottom:0; color:#00f2ff;'>⚽ {dados_time['Time']}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#c084fc; font-weight:bold; margin-bottom:15px;'>Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>", unsafe_allow_html=True)
+
+    c_box1, c_box2 = st.columns(2)
+    
+    with c_box1:
+        st.markdown(
+            f'<div class="box-m1">'
+            f'<div class="lbl-title">⚽ ÚLTIMA PONTUAÇÃO</div>'
+            f'<div style="display:flex; align-items:baseline; margin-top:5px;">'
+            f'<span class="val-num">{pt_atual:.2f}</span>{html_diff_pontos}'
+            f'</div>'
+            f'<div style="margin-top:10px; font-size:14px; color:#94a3b8;">'
+            f'MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">{media_pontos_liga:.2f} pts</strong>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    with c_box2:
+        st.markdown(
+            f'<div class="box-m2">'
+            f'<div class="lbl-title">💰 PATRIMÔNIO</div>'
+            f'<div style="display:flex; align-items:baseline; margin-top:5px;">'
+            f'<span class="val-num">C$ {dados_time["Patrimônio (C$)"]:.2f}</span>{html_val_cartoletas}'
+            f'</div>'
+            f'<div style="margin-top:10px; font-size:14px; color:#94a3b8;">'
+            f'MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
     st.divider()
 
