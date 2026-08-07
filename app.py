@@ -3,10 +3,10 @@ import pandas as pd
 import requests
 import os
 
-# 1. Configuração da Página
+# 1. Configuração da Página (Ícone alterado para bola de futebol ⚽)
 st.set_page_config(
     page_title="Black Guys League - Cartola FC",
-    page_icon="⚔️",
+    page_icon="⚽",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -308,7 +308,6 @@ def carregar_dados_liga():
                         if val_api is not None and float(val_api) != 0.0:
                             valorizacao_rodada = float(val_api)
 
-                # Busca da rodada consolidada/anterior para somar as variações dos atletas se ainda estiver zerado
                 if valorizacao_rodada == 0.0 and rodada_ultima_consolidada >= 1:
                     res_at = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
                     if res_at.status_code == 200:
@@ -317,7 +316,6 @@ def carregar_dados_liga():
                         if atletas:
                             valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
 
-                # Busca rápida da rodada penúltima para comparação
                 if rodada_penultima >= 1:
                     res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
@@ -393,7 +391,7 @@ def carregar_base_vencedores():
             return None
     return None
 
-# Carregamento dos dados no estado da aplicação
+# Carregamento dos dados
 df, rodada_atual, status_mercado = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
@@ -417,7 +415,7 @@ with col_logo:
     if logo_path:
         st.image(logo_path, width=150)
     else:
-        st.title("⚔️")
+        st.title("⚽")
 
 with col_title:
     st.title("BLACK GUYS LEAGUE")
