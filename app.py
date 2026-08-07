@@ -1,17 +1,16 @@
 import streamlit as st
 import pandas as pd
 import requests
-import os
 
 # 1. Configuração da Página
 st.set_page_config(
-    page_title="Black Guys League - Cartola FC",
-    page_icon="⚔️",
+    page_title="Campeonato Brasileiro - Série A",
+    page_icon="⚽",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon (Baseada na Logo Oficial + Letreiro)
+# 2. Estilização Cyberpunk Neon
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -42,28 +41,28 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* ESTILO DO LETREIRO (MARQUEE) NEON */
+    /* LETREIRO (MARQUEE) NEON */
     .ticker-container {
         width: 100%;
         background: rgba(10, 8, 19, 0.85);
         border: 1px solid #00f2ff;
         border-radius: 8px;
-        box-shadow: 0 0 12px rgba(0, 242, 255, 0.3);
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
         overflow: hidden;
         white-space: nowrap;
-        padding: 8px 0;
+        padding: 10px 0;
         margin-bottom: 20px;
     }
 
     .ticker-text {
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 22s linear infinite;
+        animation: marquee 28s linear infinite;
         font-family: 'Rajdhani', sans-serif;
-        font-size: 18px;
+        font-size: 19px;
         font-weight: 700;
         color: #00f2ff;
-        text-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
+        text-shadow: 0 0 8px rgba(0, 242, 255, 0.7);
         text-transform: uppercase;
         letter-spacing: 1.5px;
     }
@@ -73,71 +72,42 @@ st.markdown("""
         100% { transform: translate(-100%, 0); }
     }
 
-    /* Cartões de Métricas (KPIs) Neons */
-    div[data-testid="stMetric"] {
-        background: rgba(18, 12, 38, 0.75);
-        border: 2px solid #a855f7;
-        box-shadow: 0 0 15px rgba(168, 85, 247, 0.35), inset 0 0 10px rgba(0, 242, 255, 0.1);
+    /* Card de Partida Neon */
+    .match-card {
+        background: rgba(18, 12, 38, 0.8);
+        border: 1px solid #a855f7;
+        box-shadow: 0 0 12px rgba(168, 85, 247, 0.25);
+        border-radius: 12px;
         padding: 16px;
-        border-radius: 14px;
+        margin-bottom: 15px;
+        text-align: center;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    div[data-testid="stMetric"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 0 25px rgba(0, 242, 255, 0.6);
+    .match-card:hover {
+        transform: translateY(-2px);
         border-color: #00f2ff;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
     }
 
-    div[data-testid="stMetricLabel"] {
-        color: #c084fc !important;
-        font-size: 16px !important;
-        font-weight: bold;
-        letter-spacing: 1px;
+    .score-badge {
+        font-family: 'Teko', sans-serif;
+        font-size: 32px;
+        color: #00f2ff;
+        text-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
+        padding: 0 10px;
     }
 
-    div[data-testid="stMetricValue"] {
-        color: #00f2ff !important;
-        font-family: 'Teko', sans-serif !important;
-        font-size: 38px !important;
+    .team-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #f1f5f9;
     }
 
-    /* Estilização das Abas */
-    button[data-baseweb="tab"] {
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        color: #94a3b8 !important;
-        font-size: 18px !important;
-        font-family: 'Rajdhani', sans-serif !important;
-        font-weight: 700 !important;
-        border-radius: 8px 8px 0px 0px;
-        padding: 10px 20px !important;
-        border: 1px solid rgba(168, 85, 247, 0.2) !important;
-    }
-
-    button[aria-selected="true"] {
-        background: linear-gradient(180deg, rgba(168, 85, 247, 0.3) 0%, rgba(0, 242, 255, 0.1) 100%) !important;
-        color: #00f2ff !important;
-        border-bottom: 3px solid #00f2ff !important;
-        box-shadow: 0 0 12px rgba(0, 242, 255, 0.5);
-    }
-
-    /* Tabelas */
-    div[data-testid="stDataFrame"] {
-        border: 1px solid #a855f7;
-        border-radius: 12px;
-        box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
-        overflow: hidden;
-    }
-
-    /* Card de Vencedor do Mês */
-    .card-vencedor {
-        background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-        border: 2px solid #eab308;
-        box-shadow: 0 0 15px rgba(234, 179, 8, 0.25);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        text-align: center;
+    .match-info {
+        font-size: 13px;
+        color: #c084fc;
+        margin-top: 6px;
     }
 
     hr {
@@ -147,253 +117,137 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Função de Carregamento de Dados da Liga
-@st.cache_data(ttl=60)
-def carregar_dados_liga():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json"
-    }
-    
-    rodada_cartola = 20
-    status_mercado = 1 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json"
+}
+
+# 3. Funções para Busca de Dados Reais do Brasileirão
+@st.cache_data(ttl=120)
+def obter_rodada_atual():
     try:
-        res_m = requests.get("https://api.cartola.globo.com/mercado/status", headers=headers, timeout=5)
-        if res_m.status_code == 200:
-            dados_m = res_m.json()
-            rodada_cartola = dados_m.get("rodada_atual", 20)
-            status_mercado = dados_m.get("status_mercado", 1)
+        res = requests.get("https://api.cartola.globo.com/mercado/status", headers=HEADERS, timeout=5)
+        if res.status_code == 200:
+            dados = res.json()
+            return dados.get("rodada_atual", 1), dados.get("status_mercado", 1)
     except:
         pass
+    return 1, 1
 
-    # Carrega o CSV base principal
-    df_base = None
-    for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
-        if os.path.exists(csv_file):
-            try:
-                df_base = pd.read_csv(csv_file, sep=None, engine='python', encoding='utf-8-sig')
-                df_base.columns = df_base.columns.str.strip()
-                break
-            except:
-                pass
+@st.cache_data(ttl=120)
+def carregar_partidas_rodada(num_rodada):
+    url = f"https://api.cartola.globo.com/partidas/{num_rodada}"
+    try:
+        res = requests.get(url, headers=HEADERS, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            partidas = data.get("partidas", [])
+            clubes = data.get("clubes", {})
+            return partidas, clubes
+    except:
+        pass
+    return [], {}
 
-    if df_base is None:
-        st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
-        return pd.DataFrame(), rodada_cartola, status_mercado
+# --- 4. CARREGAMENTO DOS DADOS ---
+rodada_real, status_m = obter_rodada_atual()
 
-    lista_times = []
-    
-    for _, row in df_base.iterrows():
-        nome_time = str(row["Time"]).strip()
-        cartoleiro = str(row["Cartoleiro"]).strip()
-        pontos_base_historico = float(row["Total"])
+# Seletor de Rodada no Cabeçalho
+col_tit, col_sel, col_btn = st.columns([3, 1, 1])
+with col_tit:
+    st.title("BRASILEIRÃO SÉRLE A")
+    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>ACOMPANHAMENTO DE JOGOS E PLACARES EM TEMPO REAL</h4>", unsafe_allow_html=True)
+
+with col_sel:
+    rodada_selecionada = st.selectbox("Escolha a Rodada:", list(range(1, 39)), index=max(0, rodada_real - 1))
+
+with col_btn:
+    st.write("")
+    if st.button("🔄 Atualizar Jogos"):
+        st.cache_data.clear()
+        st.rerun()
+
+partidas, clubes = carregar_partidas_rodada(rodada_selecionada)
+
+# --- 5. MONTAR TEXTO DO LETREIRO (TICKER) ---
+itens_letreiro = []
+if partidas and clubes:
+    for p in partidas:
+        id_m = str(p.get("clube_casa_id"))
+        id_v = str(p.get("clube_visitante_id"))
         
-        time_id = row.get("ID", None)
-        if pd.notna(time_id):
-            try:
-                time_id = int(time_id)
-            except:
-                time_id = None
+        nome_m = clubes.get(id_m, {}).get("nome", "Casa").upper()
+        nome_v = clubes.get(id_v, {}).get("nome", "Visitante").upper()
+        
+        placar_m = p.get("placar_oficial_mandante")
+        placar_v = p.get("placar_oficial_visitante")
+        
+        if placar_m is not None and placar_v is not None:
+            itens_letreiro.append(f"{nome_m} {placar_m} x {placar_v} {nome_v}")
         else:
-            time_id = None
+            itens_letreiro.append(f"{nome_m} x {nome_v} (A JOGAR)")
 
-        pt_rodada = 0.0
-        
-        if time_id:
-            try:
-                res_p = requests.get(f"https://api.cartola.globo.com/time/id/{time_id}", headers=headers, timeout=5)
-                if res_p.status_code == 200:
-                    dados = res_p.json()
-                    p_raw = dados.get("pontos", 0)
-                    if isinstance(p_raw, dict):
-                        pt_rodada = float(p_raw.get("rodada", 0))
-                    elif isinstance(p_raw, (int, float)):
-                        pt_rodada = float(p_raw)
-            except:
-                pass
-        
-        if status_mercado == 2:
-            total_acumulado = pontos_base_historico + pt_rodada
-        else:
-            total_acumulado = pontos_base_historico
-        
-        lista_times.append({
-            "Time": nome_time,
-            "Cartoleiro": cartoleiro,
-            "Total": round(total_acumulado, 2),
-            "Última Rodada": round(pt_rodada, 2)
-        })
-
-    df = pd.DataFrame(lista_times)
-    df = df.sort_values(by="Total", ascending=False).reset_index(drop=True)
-    df["Posição"] = df.index + 1
-    
-    top_score = df.iloc[0]["Total"]
-    df["Dif. p/ Rival"] = (df["Total"].shift(1) - df["Total"]).round(2).fillna(0)
-    df["Dif. p/ Líder"] = (top_score - df["Total"]).round(2)
-    
-    return df, rodada_cartola, status_mercado
-
-# 4. Função para carregar a base de vencedores do mês
-@st.cache_data(ttl=60)
-def carregar_base_vencedores():
-    if os.path.exists("base_vencedores.csv"):
-        try:
-            df_v = pd.read_csv("base_vencedores.csv", sep=None, engine='python', encoding='utf-8-sig')
-            df_v.columns = df_v.columns.str.strip()
-            return df_v
-        except:
-            return None
-    return None
-
-# Busca os dados no início para usar no letreiro
-df, rodada_atual, status_mercado = carregar_dados_liga()
-df_vencedores = carregar_base_vencedores()
-
-# --- 5. LETREIRO DE NOTÍCIAS / RODADA ---
-status_texto = "AO VIVO 🔴 (Rodada em Andamento)" if status_mercado == 2 else "MERCADO ABERTO 🟢 (Aguardando Jogos)"
-
-if not df.empty:
-    lider_nome = df.iloc[0]['Time']
-    mito_nome = df.sort_values(by="Última Rodada", ascending=False).iloc[0]['Time']
-    texto_ticker = f"⚽ CAMPEONATO BRASILEIRO 2026 • RODADA ATUAL: {rodada_atual}ª RODADA • STATUS: {status_texto} • 🥇 LÍDER DA LIGA: {lider_nome} • 🚀 MITO DA RODADA: {mito_nome} • Siga acompanhando a Black Guys League!"
+    texto_ticker = f"⚽ BRASILEIRÃO SÉRLE A • RODADA {rodada_selecionada} • " + " • ".join(itens_letreiro) + " • ⚽"
 else:
-    texto_ticker = f"⚽ CAMPEONATO BRASILEIRO 2026 • RODADA ATUAL: {rodada_atual}ª RODADA • STATUS: {status_texto} • Carregando dados da Black Guys League..."
+    texto_ticker = f"⚽ BRASILEIRÃO SÉRLE A • RODADA {rodada_selecionada} • Carregando jogos e placares..."
 
+# Exibição do Letreiro Neon
 st.markdown(f"""
     <div class="ticker-container">
         <div class="ticker-text">{texto_ticker}</div>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 6. CABEÇALHO & LOGO ---
-col_logo, col_title = st.columns([1, 4])
-
-with col_logo:
-    logo_path = None
-    for ext in ["logo.jpg", "logo.png", "logo.jpeg"]:
-        if os.path.exists(ext):
-            logo_path = ext
-            break
-            
-    if logo_path:
-        st.image(logo_path, width=150)
-    else:
-        st.title("⚔️")
-
-with col_title:
-    st.title("BLACK GUYS LEAGUE")
-    st.markdown("<h4 style='color: #c084fc; margin-top: -10px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
-
 st.divider()
 
-# Botão de Atualização Manual
-col_status, col_btn = st.columns([4, 1])
-with col_btn:
-    if st.button("🔄 Atualizar Ao Vivo"):
-        st.cache_data.clear()
-        st.rerun()
+# --- 6. EXIBIÇÃO DAS PARTIDAS REALIZADAS NA RODADA ---
+st.subheader(f"⚔️ Confrontos da {rodada_selecionada}ª Rodada")
 
-# --- 7. VISUALIZAÇÃO E TABELAS ---
-if not df.empty:
-    # KPI METRIC CARDS
-    lider_geral = df.iloc[0]
-    mito_rodada = df.sort_values(by="Última Rodada", ascending=False).iloc[0]
-
-    k1, k2 = st.columns(2)
-    k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total']} pts")
-    k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"{mito_rodada['Última Rodada']} pts")
-
-    st.write("")
-
-    # ABAS
-    tab1, tab2, tab3 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "📊 Gráficos & Estatísticas"])
-
-    with tab1:
-        st.subheader("⚡ Tabela de Posições da Liga")
+if partidas and clubes:
+    cols = st.columns(2)
+    for i, p in enumerate(partidas):
+        id_m = str(p.get("clube_casa_id"))
+        id_v = str(p.get("clube_visitante_id"))
         
-        # Seleção entre Geral x Última Rodada
-        visao = st.radio(
-            "Selecione a visualização:",
-            ["Classificação Geral (Total Acumulado)", "Pontuação da Última Rodada"],
-            horizontal=True
-        )
+        clube_m = clubes.get(id_m, {})
+        clube_v = clubes.get(id_v, {})
         
-        st.write("")
+        nome_m = clube_m.get("nome", "Mandante")
+        nome_v = clube_v.get("nome", "Visitante")
         
-        if visao == "Classificação Geral (Total Acumulado)":
-            st.dataframe(
-                df[["Posição", "Time", "Cartoleiro", "Total", "Última Rodada", "Dif. p/ Rival", "Dif. p/ Líder"]],
-                use_container_width=True,
-                hide_index=True
-            )
-        else:
-            df_rodada = df.sort_values(by="Última Rodada", ascending=False).reset_index(drop=True)
-            df_rodada["Pos. Rodada"] = df_rodada.index + 1
-            st.dataframe(
-                df_rodada[["Pos. Rodada", "Time", "Cartoleiro", "Última Rodada", "Total"]],
-                use_container_width=True,
-                hide_index=True
-            )
-
-    with tab2:
-        st.subheader("👑 Galeria de Campeões Mensais")
-        st.caption("Premiações e mitações mês a mês na Black Guys League.")
+        escudo_m = clube_m.get("escudos", {}).get("60x60", "")
+        escudo_v = clube_v.get("escudos", {}).get("60x60", "")
         
-        if df_vencedores is not None and not df_vencedores.empty:
-            # Tabela resumida
-            st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
-            
-            st.write("")
-            st.divider()
-            
-            # Cards em colunas para dar visual moderno
-            cols_v = st.columns(3)
-            idx_col = 0
-            
-            for _, row in df_vencedores.iterrows():
-                mes = row.get("Mês", row.get("Mes", "Mês"))
-                vencedor = row.get("Vencedor", row.get("Time", "-"))
-                pontos = row.get("Pontos", row.get("Pontuação", "-"))
-                cartoleiro = row.get("Cartoleiro", "")
-                
-                with cols_v[idx_col % 3]:
-                    st.markdown(f"""
-                        <div class="card-vencedor">
-                            <h4 style="color: #eab308; margin: 0;">🥇 {mes}</h4>
-                            <h3 style="color: #00f2ff; margin: 5px 0;">{vencedor}</h3>
-                            <p style="color: #c084fc; margin: 0; font-weight: bold;">{cartoleiro}</p>
-                            <p style="color: #e2e8f0; margin-top: 5px; font-size: 18px;"><strong>{pontos}</strong></p>
+        placar_m = p.get("placar_oficial_mandante")
+        placar_v = p.get("placar_oficial_visitante")
+        
+        placar_txt = f"{placar_m if placar_m is not None else ''} X {placar_v if placar_v is not None else ''}" if (placar_m is not None or placar_v is not None) else "VS"
+        
+        local = p.get("local", "Estádio não informado")
+        data_jogo = p.get("partida_data", "")
+        
+        with cols[i % 2]:
+            st.markdown(f"""
+                <div class="match-card">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="flex: 1; text-align: center;">
+                            <img src="{escudo_m}" width="45" style="vertical-align: middle;"><br>
+                            <span class="team-name">{nome_m}</span>
                         </div>
-                    """, unsafe_allow_html=True)
-                idx_col += 1
-        else:
-            st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
+                        <div class="score-badge">
+                            {placar_txt}
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <img src="{escudo_v}" width="45" style="vertical-align: middle;"><br>
+                            <span class="team-name">{nome_v}</span>
+                        </div>
+                    </div>
+                    <div class="match-info">
+                        📍 {local} &nbsp;|&nbsp; 🗓️ {data_jogo}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+else:
+    st.info("⚠️ Não foi possível carregar as partidas desta rodada no momento.")
 
-    with tab3:
-        st.subheader("🎯 Desempenho da Última Rodada")
-        st.caption("Rendimento isolado de cada cartoleiro na rodada mais recente.")
-        
-        df_rodada_sorted = df.sort_values(by="Última Rodada", ascending=True)
-        st.bar_chart(
-            df_rodada_sorted,
-            x="Time",
-            y="Última Rodada",
-            color="Time",
-            use_container_width=True
-        )
-
-        st.divider()
-
-        st.subheader("🔥 Pontuação Total Acumulada")
-        st.caption("Visão geral do volume total de pontos acumulados no campeonato.")
-        
-        st.bar_chart(
-            df.sort_values(by="Total", ascending=True),
-            x="Time",
-            y="Total",
-            use_container_width=True
-        )
-
-    st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sincronizado automaticamente via API Cartola FC.")
+st.divider()
+st.caption(f"⚡ Dados Oficiais do Campeonato Brasileiro • Rodada {rodada_selecionada} • Sincronizado via API Cartola/Globo.")
