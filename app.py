@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Carrega a imagem da grade em Base64 para garantir carregamento 100% confiável
+# 2. Converte a imagem da grade em Base64 para garantir carregamento 100% confiável
 def carregar_imagem_base64(caminho_imagem):
     if os.path.exists(caminho_imagem):
         with open(caminho_imagem, "rb") as image_file:
@@ -176,11 +176,10 @@ st.markdown(f"""
 
     /* ELEMENTO DE ESCUDO CORTADO DA SPRITE SHEET VIA BASE64 */
     .escudo-sprite {{
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         display: inline-block;
         background-repeat: no-repeat;
-        background-size: 400% 500%;
         flex-shrink: 0;
     }}
 
@@ -301,7 +300,7 @@ st.markdown(f"""
         margin: 15px 0 !important;
     }}
 
-    /* REGRAS MOBILE */
+    /* REGRAS MOBILE (CENTRALIZAÇÃO DA LOGO E TEXTOS) */
     @media (max-width: 768px) {{
         div[data-testid="stColumn"]:first-child {{
             display: flex !important;
@@ -370,33 +369,33 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Mapeamento das posições da grade da imagem (4 colunas x 5 linhas)
+# 4. Mapeamento das posições da grade de imagem 4x5
 POSICOES_GRADE = {
-    # Linha 0
+    # Linha 0 (CAP, CAM, BAH, BOT)
     "CAP": (0, 0), "ATHLETICO-PR": (0, 0), "ATLÉTICO-PR": (0, 0),
     "CAM": (1, 0), "ATLÉTICO-MG": (1, 0), "ATLETICO-MG": (1, 0),
     "BAH": (2, 0), "BAHIA": (2, 0),
     "BOT": (3, 0), "BOTAFOGO": (3, 0),
     
-    # Linha 1
+    # Linha 1 (RBB, CHA, COR, CFC)
     "RBB": (0, 1), "BRAGANTINO": (0, 1), "RED BULL BRAGANTINO": (0, 1),
     "CHA": (1, 1), "CHAPECOENSE": (1, 1),
     "COR": (2, 1), "CORINTHIANS": (2, 1),
     "CFC": (3, 1), "CORITIBA": (3, 1),
     
-    # Linha 2
+    # Linha 2 (CRU, FLA, FLU, GRE)
     "CRU": (0, 2), "CRUZEIRO": (0, 2),
     "FLA": (1, 2), "FLAMENGO": (1, 2),
     "FLU": (2, 2), "FLUMINENSE": (2, 2),
     "GRE": (3, 2), "GRÊMIO": (3, 2), "GREMIO": (3, 2),
     
-    # Linha 3
+    # Linha 3 (INT, MIR, PAL, REM)
     "INT": (0, 3), "INTERNACIONAL": (0, 3),
     "MIR": (1, 3), "MIRASSOL": (1, 3),
     "PAL": (2, 3), "PALMEIRAS": (2, 3),
     "REM": (3, 3), "REMO": (3, 3),
     
-    # Linha 4
+    # Linha 4 (SAN, SAO, VAS, VIT)
     "SAN": (0, 4), "SANTOS": (0, 4),
     "SAO": (1, 4), "SÃO PAULO": (1, 4), "SAO PAULO": (1, 4),
     "VAS": (2, 4), "VASCO": (2, 4),
@@ -407,8 +406,8 @@ def obter_estilo_sprite(nome_clube, sigla_clube):
     if not URL_BASE64_ESCUDOS:
         return ""
 
-    nome_u = nome_clube.upper().strip()
-    sigla_u = sigla_clube.upper().strip()
+    nome_u = str(nome_clube).upper().strip()
+    sigla_u = str(sigla_clube).upper().strip()
     
     pos = POSICOES_GRADE.get(sigla_u) or POSICOES_GRADE.get(nome_u) or (0, 0)
     col, lin = pos
@@ -416,7 +415,7 @@ def obter_estilo_sprite(nome_clube, sigla_clube):
     pos_x = (col / 3.0) * 100
     pos_y = (lin / 4.0) * 100
     
-    return f"background-image: url('{URL_BASE64_ESCUDOS}'); background-position: {pos_x:.1f}% {pos_y:.1f}%;"
+    return f"background-image: url('{URL_BASE64_ESCUDOS}') !important; background-size: 400% 500% !important; background-position: {pos_x:.1f}% {pos_y:.1f}% !important;"
 
 # 5. Carregamento dos dados da Liga
 @st.cache_data(ttl=120)
