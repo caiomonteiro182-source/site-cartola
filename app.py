@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import requests
 import os
+from datetime import datetime
 
-# 1. Configuração da Página (Ícone alterado para bola de futebol ⚽)
+# 1. Configuração da Página
 st.set_page_config(
     page_title="Black Guys League - Cartola FC",
     page_icon="⚽",
@@ -11,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Estilização Cyberpunk Neon
+# 2. Estilização Cyberpunk Neon + Banner do Mercado Embutido
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -33,6 +34,7 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         letter-spacing: 2px;
         margin-bottom: 0px !important;
+        display: inline-block;
     }
 
     h2, h3 {
@@ -40,6 +42,47 @@ st.markdown("""
         color: #00f2ff !important;
         text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
         font-weight: 700;
+    }
+
+    /* CONTÊINER ALINHADO PARA O TÍTULO + TEMPORIZADOR */
+    .header-title-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    /* ESTILO DO BANNER CONTADOR AO LADO DO TÍTULO */
+    .market-timer-inline-open {
+        background: #ccff00;
+        color: #0a0813;
+        font-family: 'Teko', sans-serif;
+        font-size: 22px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        padding: 4px 14px;
+        border-radius: 8px;
+        box-shadow: 0 0 12px rgba(204, 255, 0, 0.6);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .market-timer-inline-closed {
+        background: #ef4444;
+        color: #ffffff;
+        font-family: 'Teko', sans-serif;
+        font-size: 22px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        padding: 4px 14px;
+        border-radius: 8px;
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
 
     /* Estilo do Link Oficial da Liga */
@@ -208,7 +251,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 3. Função de Carregamento Ultra-Rápido com Garantia de Valorização
+# 3. Função de Carregamento Ultra-Rápido
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -216,12 +259,15 @@ def carregar_dados_liga():
 
     rodada_cartola = 20
     status_mercado = 1 
+    info_fechamento = None
+
     try:
         res_m = session.get("https://api.cartola.globo.com/mercado/status", timeout=4)
         if res_m.status_code == 200:
             dados_m = res_m.json()
             rodada_cartola = dados_m.get("rodada_atual", 20)
             status_mercado = dados_m.get("status_mercado", 1)
+            info_fechamento = dados_m.get("fechamento", {})
     except:
         pass
 
@@ -237,7 +283,7 @@ def carregar_dados_liga():
 
     if df_base is None:
         st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
-        return pd.DataFrame(), rodada_cartola, status_mercado
+        return pd.DataFrame(), rodada_cartola, status_mercado, info_fechamento
 
     atletas_ao_vivo = {}
     if status_mercado == 2:
@@ -346,9 +392,46 @@ def carregar_dados_liga():
     df["Dif. p/ Rival"] = (df["Total Acumulado"].shift(1) - df["Total Acumulado"]).round(2).fillna(0)
     df["Dif. p/ Líder"] = (top_score - df["Total Acumulado"]).round(2)
     
-    return df, rodada_cartola, status_mercado
+    return df, rodada_cartola, status_mercado, info_fechamento
 
-# 4. Função para carregar os jogos reais do Campeonato Brasileiro
+# 4. Função para calcular a tag embutida do tempo do mercado
+def gerar_badge_mercado(info_fechamento, status_mercado):
+    if status_mercado != 1 or not info_fechamento:
+        return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
+
+    try:
+        ano = info_fechamento.get("ano")
+        mes = info_fechamento.get("mes")
+        dia = info_fechamento.get("dia")
+        hora = info_fechamento.get("hora")
+        minuto = info_fechamento.get("minuto")
+
+        data_fechamento = datetime(ano, mes, dia, hora, minuto)
+        agora = datetime.now()
+
+        diferenca = data_fechamento - agora
+
+        if diferenca.total_seconds() <= 0:
+            return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
+
+        dias = diferenca.days
+        horas, rem = divmod(diferenca.seconds, 3600)
+        minutos, _ = divmod(rem, 60)
+
+        if dias > 1:
+            texto_tempo = f"MERCADO FECHA EM {dias} DIAS"
+        elif dias == 1:
+            texto_tempo = f"MERCADO FECHA EM 1 DIA E {horas}H"
+        elif horas > 0:
+            texto_tempo = f"MERCADO FECHA EM {horas}H {minutos}MIN"
+        else:
+            texto_tempo = f"MERCADO FECHA EM {minutos} MIN!"
+
+        return f'<span class="market-timer-inline-open">⏱️ {texto_tempo}</span>'
+    except:
+        return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
+
+# 5. Função para carregar os jogos reais do Campeonato Brasileiro
 @st.cache_data(ttl=120)
 def carregar_partidas_br(num_rodada):
     try:
@@ -379,7 +462,7 @@ def carregar_partidas_br(num_rodada):
         pass
     return "RESULTADOS DO BRASILEIRÃO EM ATUALIZAÇÃO"
 
-# 5. Função para carregar a base de vencedores do mês
+# 6. Função para carregar a base de vencedores do mês
 @st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
@@ -392,17 +475,17 @@ def carregar_base_vencedores():
     return None
 
 # Carregamento dos dados
-df, rodada_atual, status_mercado = carregar_dados_liga()
+df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 jogos_brasileirao = carregar_partidas_br(rodada_atual)
 
-# --- 6. LETREIRO NEON ---
+# --- 7. LETREIRO NEON ---
 status_tag = "🔴 AO VIVO" if status_mercado == 2 else "🟢 MERCADO ABERTO"
 texto_ticker = f"⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]: {jogos_brasileirao} • ⚔️ BLACK GUYS LEAGUE"
 
 st.markdown(f'<div class="ticker-container"><div class="ticker-text">{texto_ticker}</div></div>', unsafe_allow_html=True)
 
-# --- 7. CABEÇALHO, LOGO & LINK DA LIGA ---
+# --- 8. CABEÇALHO, LOGO, TÍTULO + TEMPORIZADOR NA FRENTE ---
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
@@ -418,7 +501,16 @@ with col_logo:
         st.title("⚽")
 
 with col_title:
-    st.title("BLACK GUYS LEAGUE")
+    badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
+    
+    # Renderiza o Título e o Temporizador embutido na mesma linha
+    st.markdown(f"""
+        <div class="header-title-container">
+            <h1>BLACK GUYS LEAGUE</h1>
+            {badge_timer}
+        </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown("<h4 style='color: #c084fc; margin-top: -10px; margin-bottom: 2px;'>TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</h4>", unsafe_allow_html=True)
     st.markdown('<a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">🔗 Acessar Liga Oficial no Cartola FC</a>', unsafe_allow_html=True)
 
@@ -435,7 +527,7 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# --- 8. CARD DETALHADO INSTANTÂNEO ---
+# --- 9. CARD DETALHADO INSTANTÂNEO ---
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
     
