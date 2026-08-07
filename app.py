@@ -117,7 +117,7 @@ st.markdown("""
 
     .detail-value {
         font-family: 'Teko', sans-serif;
-        font-size: 42px;
+        font-size: 48px;
         font-weight: bold;
         color: #ffffff;
         line-height: 1;
@@ -125,13 +125,13 @@ st.markdown("""
 
     .val-up {
         color: #22c55e !important;
-        font-size: 24px;
+        font-size: 26px;
         font-weight: bold;
     }
 
     .val-down {
         color: #ef4444 !important;
-        font-size: 24px;
+        font-size: 26px;
         font-weight: bold;
     }
 
@@ -468,19 +468,19 @@ if not df.empty:
     else:
         html_val_cartoletas = f'<span class="val-down">↓ {abs(val_cartoletas):.2f}</span>'
 
-    st.markdown(f"""
+    # Bloco renderizado com unsafe_allow_html=True ativo
+    card_html = f"""
         <div class="team-detail-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 242, 255, 0.2); padding-bottom: 12px; margin-bottom: 16px;">
-                <div>
-                    <h3 style="margin: 0; color: #00f2ff;">⚽ {dados_time['Time']}</h3>
-                    <p style="margin: 0; color: #c084fc; font-weight: bold;">Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>
-                </div>
+            <div style="border-bottom: 1px solid rgba(0, 242, 255, 0.2); padding-bottom: 12px; margin-bottom: 16px;">
+                <h3 style="margin: 0; color: #00f2ff;">⚽ {dados_time['Time']}</h3>
+                <p style="margin: 0; color: #c084fc; font-weight: bold;">Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>
             </div>
             
             <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <!-- BLOCO 1: PONTUAÇÃO -->
                 <div style="flex: 1; min-width: 250px; background: rgba(10, 8, 19, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid #00f2ff;">
                     <div class="detail-title">⚽ ÚLTIMA PONTUAÇÃO</div>
-                    <div style="display: flex; align-items: baseline; gap: 10px;">
+                    <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 5px;">
                         <span class="detail-value">{pt_atual:.2f}</span>
                         {html_diff_pontos}
                     </div>
@@ -489,9 +489,10 @@ if not df.empty:
                     </div>
                 </div>
                 
+                <!-- BLOCO 2: PATRIMÔNIO -->
                 <div style="flex: 1; min-width: 250px; background: rgba(10, 8, 19, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid #22c55e;">
                     <div class="detail-title">💰 PATRIMÔNIO</div>
-                    <div style="display: flex; align-items: baseline; gap: 10px;">
+                    <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 5px;">
                         <span class="detail-value">C$ {dados_time['Patrimônio (C$)']:.2f}</span>
                         {html_val_cartoletas}
                     </div>
@@ -501,7 +502,8 @@ if not df.empty:
                 </div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(card_html, unsafe_allow_html=True)
 
     st.divider()
 
