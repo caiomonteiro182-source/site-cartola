@@ -394,7 +394,7 @@ def carregar_dados_liga():
     
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 4. Função para calcular a tag embutida do tempo do mercado
+# 4. Função para calcular a tag embutida do tempo do mercado (Apenas Horas e Minutos)
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -410,20 +410,16 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
         agora = datetime.now()
 
         diferenca = data_fechamento - agora
+        total_segundos = int(diferenca.total_seconds())
 
-        if diferenca.total_seconds() <= 0:
+        if total_segundos <= 0:
             return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
 
-        dias = diferenca.days
-        horas, rem = divmod(diferenca.seconds, 3600)
-        minutos, _ = divmod(rem, 60)
+        total_horas = total_segundos // 3600
+        minutos = (total_segundos % 3600) // 60
 
-        if dias > 1:
-            texto_tempo = f"MERCADO FECHA EM {dias} DIAS"
-        elif dias == 1:
-            texto_tempo = f"MERCADO FECHA EM 1 DIA E {horas}H"
-        elif horas > 0:
-            texto_tempo = f"MERCADO FECHA EM {horas}H {minutos}MIN"
+        if total_horas > 0:
+            texto_tempo = f"MERCADO FECHA EM {total_horas}H {minutos:02d}MIN"
         else:
             texto_tempo = f"MERCADO FECHA EM {minutos} MIN!"
 
@@ -503,7 +499,6 @@ with col_logo:
 with col_title:
     badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
     
-    # Renderiza o Título e o Temporizador embutido na mesma linha
     st.markdown(f"""
         <div class="header-title-container">
             <h1>BLACK GUYS LEAGUE</h1>
