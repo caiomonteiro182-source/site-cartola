@@ -24,7 +24,7 @@ def carregar_logo_base64():
 
 URL_BASE64_LOGO = carregar_logo_base64()
 
-# 3. Estilização Cyberpunk Neon + Layout Responsivo da Logo (Celular = Centro | PC = Esquerda)
+# 3. Estilização Cyberpunk Neon + Layout Responsivo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -381,7 +381,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Carregamento dos dados da Liga
+# 4. Carregamento dos dados da Liga (Com Soma Incremental Atualizada)
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -398,7 +398,7 @@ def carregar_dados_liga():
             rodada_cartola = dados_m.get("rodada_atual", 20)
             status_mercado = dados_m.get("status_mercado", 1)
             info_fechamento = dados_m.get("fechamento", {})
-    except:
+    except Exception:
         pass
 
     df_base = None
@@ -408,7 +408,7 @@ def carregar_dados_liga():
                 df_base = pd.read_csv(csv_file, sep=None, engine='python', encoding='utf-8-sig')
                 df_base.columns = df_base.columns.str.strip()
                 break
-            except:
+            except Exception:
                 pass
 
     if df_base is None:
@@ -421,65 +421,71 @@ def carregar_dados_liga():
             res_av = session.get("https://api.cartola.globo.com/atleta/pontuados", timeout=4)
             if res_av.status_code == 200:
                 atletas_ao_vivo = res_av.json().get("atletas", {})
-        except:
+        except Exception:
             pass
 
     lista_times = []
-    rodada_penultima = rodada_cartola - 1 if status_mercado == 2 else rodada_cartola - 2
     rodada_ultima_consolidada = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
-    
+    rodada_penultima = rodada_ultima_consolidada - 1
+
     for _, row in df_base.iterrows():
-        nome_time = str(row["Time"]).strip()
-        cartoleiro = str(row["Cartoleiro"]).strip()
-        pontos_base_historico = float(row["Total"])
+        nome_time = str(row.get("Time", "")).strip()
+        cartoleiro = str(row.get("Cartoleiro", "")).strip()
         
+        try:
+            pontos_base_historico = float(row.get("Total", 0.0))
+            if pd.isna(pontos_base_historico):
+                pontos_base_historico = 0.0
+        except (ValueError, TypeError):
+            pontos_base_historico = 0.0
+
         time_id = row.get("ID", None)
         try:
             time_id = int(time_id) if pd.notna(time_id) else None
-        except:
+        except (ValueError, TypeError):
             time_id = None
 
         pt_rodada = 0.0
         pt_rodada_anterior = 0.0
         patrimonio = 100.0
         valorizacao_rodada = 0.0
-        
+
         if time_id:
             try:
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     patrimonio = float(dados.get("patrimonio", 100.0))
-                    
+
                     if status_mercado == 2 and atletas_ao_vivo:
                         atletas_escalados = dados.get("atletas", [])
                         capitao_id = dados.get("capitao_id", None)
                         
                         pontos_vivo = 0.0
                         val_vivo = 0.0
-                        
+
                         for atleta in atletas_escalados:
                             a_id = str(atleta.get("atleta_id"))
                             if a_id in atletas_ao_vivo:
                                 info_v = atletas_ao_vivo[a_id]
                                 p_atleta = float(info_v.get("pontuacao", 0.0))
                                 v_atleta = float(info_v.get("variacao_num", 0.0))
-                                
+
                                 if capitao_id and int(a_id) == int(capitao_id):
                                     p_atleta *= 2
-                                    
+
                                 pontos_vivo += p_atleta
                                 val_vivo += v_atleta
-                        
+
                         pt_rodada = pontos_vivo
                         valorizacao_rodada = val_vivo
                     else:
                         p_raw = dados.get("pontos", 0)
                         if isinstance(p_raw, dict):
-                            pt_rodada = float(p_raw.get("rodada", 0))
+                            pt_rodada = float(p_raw.get("rodada", 0.0))
                         elif isinstance(p_raw, (int, float)):
                             pt_rodada = float(p_raw)
-                        
+
                         val_api = dados.get("valorizacao", 0.0)
                         if val_api is not None and float(val_api) != 0.0:
                             valorizacao_rodada = float(val_api)
@@ -496,14 +502,12 @@ def carregar_dados_liga():
                     res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
                         pt_rodada_anterior = float(res_ant.json().get("pontos", 0.0))
-            except:
+            except Exception:
                 pass
-        
-        if status_mercado == 2:
-            total_acumulado = pontos_base_historico + pt_rodada
-        else:
-            total_acumulado = pontos_base_historico
-        
+
+        # ACÚMULO INCREMENTAL: Pontos da rodada somados diretamente à base
+        total_acumulado = pontos_base_historico + pt_rodada
+
         lista_times.append({
             "Time": nome_time,
             "Cartoleiro": cartoleiro,
@@ -515,13 +519,15 @@ def carregar_dados_liga():
         })
 
     df = pd.DataFrame(lista_times)
-    df = df.sort_values(by="Total Acumulado", ascending=False).reset_index(drop=True)
-    df["Posição Geral"] = df.index + 1
     
-    top_score = df.iloc[0]["Total Acumulado"]
-    df["Dif. p/ Rival"] = (df["Total Acumulado"].shift(1) - df["Total Acumulado"]).round(2).fillna(0)
-    df["Dif. p/ Líder"] = (top_score - df["Total Acumulado"]).round(2)
-    
+    if not df.empty:
+        df = df.sort_values(by="Total Acumulado", ascending=False).reset_index(drop=True)
+        df["Posição Geral"] = df.index + 1
+
+        top_score = df.iloc[0]["Total Acumulado"]
+        df["Dif. p/ Rival"] = (df["Total Acumulado"].shift(1) - df["Total Acumulado"]).round(2).fillna(0)
+        df["Dif. p/ Líder"] = (top_score - df["Total Acumulado"]).round(2)
+
     return df, rodada_cartola, status_mercado, info_fechamento
 
 # 5. Contador de Mercado
@@ -554,7 +560,7 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
             texto_tempo = f"MERCADO FECHA EM {minutos} MIN!"
 
         return f'<span class="market-timer-inline-open">⏱️ {texto_tempo}</span>'
-    except:
+    except Exception:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
 # 6. Busca de partidas e escudos da API do Cartola FC
@@ -596,7 +602,7 @@ def carregar_partidas_com_escudos(num_rodada):
                     "placar_vis": placar_vis
                 })
             return jogos
-    except:
+    except Exception:
         pass
     return []
 
@@ -608,7 +614,7 @@ def carregar_base_vencedores():
             df_v = pd.read_csv("base_vencedores.csv", sep=None, engine='python', encoding='utf-8-sig')
             df_v.columns = df_v.columns.str.strip()
             return df_v
-        except:
+        except Exception:
             return None
     return None
 
@@ -650,7 +656,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 9. CABEÇALHO UNIFICADO VIA HTML/BASE64 (GARANTE ALINHAMENTO PERFEITO) ---
+# --- 9. CABEÇALHO UNIFICADO VIA HTML/BASE64 ---
 badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
 img_logo_html = f'<img src="{URL_BASE64_LOGO}" class="header-logo-img" alt="Logo">' if URL_BASE64_LOGO else ''
 
