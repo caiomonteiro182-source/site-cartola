@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Converte a logo em Base64
+# 2. Converte a logo em Base64 para inserção direta no HTML
 def carregar_logo_base64():
     for ext in ["logo.png", "logo.jpg", "logo.jpeg"]:
         if os.path.exists(ext):
@@ -24,7 +24,7 @@ def carregar_logo_base64():
 
 URL_BASE64_LOGO = carregar_logo_base64()
 
-# 3. Estilização Cyberpunk Neon + CSS Responsivo
+# 3. Estilização Cyberpunk Neon + Layout Responsivo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -372,8 +372,8 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Lógica Atualizada para Cálculo do Total Geral Direto da API
-@st.cache_data(ttl=10)
+# 4. Carregamento dos dados com Soma Incremental Garantida
+@st.cache_data(ttl=30)
 def carregar_dados_liga():
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -422,6 +422,14 @@ def carregar_dados_liga():
     for _, row in df_base.iterrows():
         nome_time = str(row.get("Time", "")).strip()
         cartoleiro = str(row.get("Cartoleiro", "")).strip()
+        
+        # Leitura da Base Histórica Fixa do CSV
+        try:
+            pontos_base_historico = float(row.get("Total", 0.0))
+            if pd.isna(pontos_base_historico):
+                pontos_base_historico = 0.0
+        except (ValueError, TypeError):
+            pontos_base_historico = 0.0
 
         time_id = row.get("ID", None)
         try:
@@ -431,27 +439,21 @@ def carregar_dados_liga():
 
         pt_rodada = 0.0
         pt_rodada_anterior = 0.0
-        total_acumulado = 0.0
         patrimonio = 100.0
         valorizacao_rodada = 0.0
 
         if time_id:
             try:
-                # 1. Pega os dados principais do time na API do Cartola
+                # Dados Gerais (Patrimônio)
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     patrimonio = float(dados.get("patrimonio", 100.0))
-                    
-                    # PONTUAÇÃO TOTAL ACUMULADA OFICIAL
-                    p_pontos = dados.get("pontos", 0)
-                    if isinstance(p_pontos, dict):
-                        total_acumulado = float(p_pontos.get("total", 0.0))
-                    elif isinstance(p_pontos, (int, float)):
-                        total_acumulado = float(p_pontos)
 
-                    # 2. SE MERCADO AO VIVO (Status 2) -> Adiciona parciais ao vivo ao total
-                    if status_mercado == 2 and atletas_ao_vivo:
+                # 1. MERCADO AO VIVO (Status 2) -> Calcula parciais
+                if status_mercado == 2 and atletas_ao_vivo:
+                    if res_p.status_code == 200:
+                        dados = res_p.json()
                         atletas_escalados = dados.get("atletas", [])
                         capitao_id = dados.get("capitao_id", None)
                         
@@ -473,20 +475,19 @@ def carregar_dados_liga():
 
                         pt_rodada = pontos_vivo
                         valorizacao_rodada = val_vivo
-                        total_acumulado += pt_rodada
+                else:
+                    # 2. MERCADO ABERTO/CONSOLIDADO (Status 1) -> Busca pontuação da última rodada
+                    if rodada_ultima_consolidada >= 1:
+                        res_uc = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
+                        if res_uc.status_code == 200:
+                            dados_uc = res_uc.json()
+                            pt_rodada = float(dados_uc.get("pontos", 0.0))
+                            
+                            atletas_uc = dados_uc.get("atletas", [])
+                            if atletas_uc:
+                                valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
 
-                # 3. Pega os pontos conquistados na última rodada finalizada
-                if status_mercado == 1 and rodada_ultima_consolidada >= 1:
-                    res_uc = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
-                    if res_uc.status_code == 200:
-                        dados_uc = res_uc.json()
-                        pt_rodada = float(dados_uc.get("pontos", 0.0))
-                        
-                        atletas_uc = dados_uc.get("atletas", [])
-                        if atletas_uc:
-                            valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
-
-                # 4. Pega os pontos da penúltima rodada
+                # 3. Busca penúltima rodada
                 if rodada_penultima >= 1:
                     res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
@@ -495,12 +496,9 @@ def carregar_dados_liga():
             except Exception:
                 pass
 
-        # Fallback de segurança se a API falhar no total acumulado
-        if total_acumulado == 0.0:
-            try:
-                total_acumulado = float(row.get("Total", 0.0)) + pt_rodada
-            except Exception:
-                total_acumulado = 0.0
+        # === REGRA DE OURO INVIOLÁVEL ===
+        # O Total Geral SEMPRE é a base histórica do CSV + os pontos conquistados na rodada.
+        total_acumulado = pontos_base_historico + pt_rodada
 
         lista_times.append({
             "Time": nome_time,
@@ -676,7 +674,7 @@ with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Pontuação Total obtida diretamente do endpoint oficial do Cartola.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados e somados ao histórico do CSV.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 FORÇAR RECARGA / ATUALIZAR TABELA", use_container_width=True):
