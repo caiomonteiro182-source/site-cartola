@@ -24,7 +24,7 @@ def carregar_logo_base64():
 
 URL_BASE64_LOGO = carregar_logo_base64()
 
-# 3. Estilização Cyberpunk Neon + CSS Responsivo
+# 3. Estilização Cyberpunk Neon + Layout Responsivo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -372,8 +372,8 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Carregamento Sincronizado Direto da API de Liga
-@st.cache_data(ttl=60)
+# 4. Lógica Corrigida: Soma Direta do CSV com a Pontuação da ÚLTIMA Rodada
+@st.cache_data(ttl=30)
 def carregar_dados_liga():
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -389,22 +389,6 @@ def carregar_dados_liga():
             rodada_cartola = dados_m.get("rodada_atual", 20)
             status_mercado = dados_m.get("status_mercado", 1)
             info_fechamento = dados_m.get("fechamento", {})
-    except Exception:
-        pass
-
-    # 1. Tenta obter o Ranking Oficial em Tempo Real da Liga Black Guys
-    times_liga_oficial = {}
-    try:
-        res_liga = session.get("https://api.cartola.globo.com/liga/blackguys-league", timeout=5)
-        if res_liga.status_code == 200:
-            dados_liga = res_liga.json()
-            for t in dados_liga.get("times", []):
-                t_id = t.get("time_id")
-                times_liga_oficial[t_id] = {
-                    "total_pontos": float(t.get("pontos", {}).get("total", 0.0) if isinstance(t.get("pontos"), dict) else t.get("pontos", 0.0)),
-                    "rodada_pontos": float(t.get("pontos", {}).get("rodada", 0.0) if isinstance(t.get("pontos"), dict) else 0.0),
-                    "variacao_patrimonio": float(t.get("variacao_patrimonio", 0.0))
-                }
     except Exception:
         pass
 
@@ -439,6 +423,7 @@ def carregar_dados_liga():
         nome_time = str(row.get("Time", "")).strip()
         cartoleiro = str(row.get("Cartoleiro", "")).strip()
         
+        # Lê a base histórica gravada no CSV
         try:
             pontos_base_historico = float(row.get("Total", 0.0))
             if pd.isna(pontos_base_historico):
@@ -456,19 +441,15 @@ def carregar_dados_liga():
         pt_rodada_anterior = 0.0
         patrimonio = 100.0
         valorizacao_rodada = 0.0
-        total_oficial_cartola = None
 
         if time_id:
             try:
-                # Se o time existe na API oficial da Liga, extrai o Total oficial exato
-                if time_id in times_liga_oficial:
-                    total_oficial_cartola = times_liga_oficial[time_id]["total_pontos"]
-
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     patrimonio = float(dados.get("patrimonio", 100.0))
 
+                    # Se estiver em andamento (Ao Vivo)
                     if status_mercado == 2 and atletas_ao_vivo:
                         atletas_escalados = dados.get("atletas", [])
                         capitao_id = dados.get("capitao_id", None)
@@ -492,6 +473,7 @@ def carregar_dados_liga():
                         pt_rodada = pontos_vivo
                         valorizacao_rodada = val_vivo
                     else:
+                        # Pega os pontos da última rodada da API
                         p_raw = dados.get("pontos", 0)
                         if isinstance(p_raw, dict):
                             pt_rodada = float(p_raw.get("rodada", 0.0))
@@ -509,14 +491,9 @@ def carregar_dados_liga():
             except Exception:
                 pass
 
-        # LÓGICA DE DECISÃO DE TOTAL ACUMULADO
-        # Prioridade 1: Total Oficial retornado diretamente da API da Liga
-        # Prioridade 2: Em tempo real ao vivo (status 2), soma base + pontos parciais ao vivo
-        # Prioridade 3: Fallback de segurança (Soma Base + Última Rodada)
-        if total_oficial_cartola is not None and status_mercado != 2:
-            total_acumulado = total_oficial_cartola
-        else:
-            total_acumulado = pontos_base_historico + pt_rodada
+        # MATEMÁTICA CORRETA:
+        # Total Acumulado = Pontuação anterior da base CSV + Pontos obtidos na última rodada
+        total_acumulado = pontos_base_historico + pt_rodada
 
         lista_times.append({
             "Time": nome_time,
@@ -531,6 +508,7 @@ def carregar_dados_liga():
     df = pd.DataFrame(lista_times)
     
     if not df.empty:
+        # Ordena a tabela do maior para o menor Total Acumulado
         df = df.sort_values(by="Total Acumulado", ascending=False).reset_index(drop=True)
         df["Posição Geral"] = df.index + 1
 
@@ -692,7 +670,7 @@ with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados diretamente com a Liga Oficial do Cartola FC.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Tabela atualizada com a soma da última rodada.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 FORÇAR RECARGA / ATUALIZAR TABELA", use_container_width=True):
