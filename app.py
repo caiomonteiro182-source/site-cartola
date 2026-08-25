@@ -24,7 +24,7 @@ def carregar_logo_base64():
 
 URL_BASE64_LOGO = carregar_logo_base64()
 
-# 3. Estilização Cyberpunk Neon + Layout Responsivo
+# 3. Estilização Cyberpunk Neon + CSS Responsivo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -372,7 +372,7 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Lógica Corrigida: Soma Direta do CSV com a Pontuação da ÚLTIMA Rodada
+# 4. Processamento Seguro de Pontuação
 @st.cache_data(ttl=30)
 def carregar_dados_liga():
     session = requests.Session()
@@ -416,6 +416,8 @@ def carregar_dados_liga():
             pass
 
     lista_times = []
+    
+    # Determina explicitamente as rodadas
     rodada_ultima_consolidada = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
     rodada_penultima = rodada_ultima_consolidada - 1
 
@@ -423,7 +425,6 @@ def carregar_dados_liga():
         nome_time = str(row.get("Time", "")).strip()
         cartoleiro = str(row.get("Cartoleiro", "")).strip()
         
-        # Lê a base histórica gravada no CSV
         try:
             pontos_base_historico = float(row.get("Total", 0.0))
             if pd.isna(pontos_base_historico):
@@ -444,13 +445,16 @@ def carregar_dados_liga():
 
         if time_id:
             try:
+                # 1. Consulta dados gerais (Patrimônio)
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     dados = res_p.json()
                     patrimonio = float(dados.get("patrimonio", 100.0))
 
-                    # Se estiver em andamento (Ao Vivo)
-                    if status_mercado == 2 and atletas_ao_vivo:
+                # 2. Se o mercado estiver AO VIVO (Status 2)
+                if status_mercado == 2 and atletas_ao_vivo:
+                    if res_p.status_code == 200:
+                        dados = res_p.json()
                         atletas_escalados = dados.get("atletas", [])
                         capitao_id = dados.get("capitao_id", None)
                         
@@ -472,18 +476,19 @@ def carregar_dados_liga():
 
                         pt_rodada = pontos_vivo
                         valorizacao_rodada = val_vivo
-                    else:
-                        # Pega os pontos da última rodada da API
-                        p_raw = dados.get("pontos", 0)
-                        if isinstance(p_raw, dict):
-                            pt_rodada = float(p_raw.get("rodada", 0.0))
-                        elif isinstance(p_raw, (int, float)):
-                            pt_rodada = float(p_raw)
+                else:
+                    # 3. Se Mercado ABERTO (Status 1): Força a busca da pontuação na rodada consolidada
+                    if rodada_ultima_consolidada >= 1:
+                        res_uc = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
+                        if res_uc.status_code == 200:
+                            dados_uc = res_uc.json()
+                            pt_rodada = float(dados_uc.get("pontos", 0.0))
+                            
+                            atletas_uc = dados_uc.get("atletas", [])
+                            if atletas_uc:
+                                valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
 
-                        val_api = dados.get("valorizacao", 0.0)
-                        if val_api is not None and float(val_api) != 0.0:
-                            valorizacao_rodada = float(val_api)
-
+                # 4. Busca rodada penúltima para fins de variação/tendência
                 if rodada_penultima >= 1:
                     res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
@@ -491,8 +496,7 @@ def carregar_dados_liga():
             except Exception:
                 pass
 
-        # MATEMÁTICA CORRETA:
-        # Total Acumulado = Pontuação anterior da base CSV + Pontos obtidos na última rodada
+        # FORÇA A SOMA DA BASE DO CSV + PONTUAÇÃO OBTIDA NA RODADA
         total_acumulado = pontos_base_historico + pt_rodada
 
         lista_times.append({
@@ -508,7 +512,6 @@ def carregar_dados_liga():
     df = pd.DataFrame(lista_times)
     
     if not df.empty:
-        # Ordena a tabela do maior para o menor Total Acumulado
         df = df.sort_values(by="Total Acumulado", ascending=False).reset_index(drop=True)
         df["Posição Geral"] = df.index + 1
 
@@ -670,7 +673,7 @@ with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Tabela atualizada com a soma da última rodada.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Tabela recalculada com soma forçada da última rodada.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 FORÇAR RECARGA / ATUALIZAR TABELA", use_container_width=True):
