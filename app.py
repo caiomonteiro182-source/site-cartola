@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Converte a logo em Base64 para inserção direta no HTML
+# 2. Converte a logo em Base64
 def carregar_logo_base64():
     for ext in ["logo.png", "logo.jpg", "logo.jpeg"]:
         if os.path.exists(ext):
@@ -372,8 +372,8 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Carregamento dos dados com Soma Incremental Garantida
-@st.cache_data(ttl=30)
+# 4. Processamento Inteligente: Calcula o acumulado somando o histórico real de todas as rodadas
+@st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -416,20 +416,14 @@ def carregar_dados_liga():
             pass
 
     lista_times = []
+    
+    # Define limite de rodadas consolidadas
     rodada_ultima_consolidada = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
     rodada_penultima = rodada_ultima_consolidada - 1
 
     for _, row in df_base.iterrows():
         nome_time = str(row.get("Time", "")).strip()
         cartoleiro = str(row.get("Cartoleiro", "")).strip()
-        
-        # Leitura da Base Histórica Fixa do CSV
-        try:
-            pontos_base_historico = float(row.get("Total", 0.0))
-            if pd.isna(pontos_base_historico):
-                pontos_base_historico = 0.0
-        except (ValueError, TypeError):
-            pontos_base_historico = 0.0
 
         time_id = row.get("ID", None)
         try:
@@ -439,66 +433,73 @@ def carregar_dados_liga():
 
         pt_rodada = 0.0
         pt_rodada_anterior = 0.0
+        total_acumulado = 0.0
         patrimonio = 100.0
         valorizacao_rodada = 0.0
 
         if time_id:
             try:
-                # Dados Gerais (Patrimônio)
+                # 1. Pega patrimônio atual do time
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
-                    dados = res_p.json()
-                    patrimonio = float(dados.get("patrimonio", 100.0))
+                    patrimonio = float(res_p.json().get("patrimonio", 100.0))
 
-                # 1. MERCADO AO VIVO (Status 2) -> Calcula parciais
-                if status_mercado == 2 and atletas_ao_vivo:
-                    if res_p.status_code == 200:
-                        dados = res_p.json()
-                        atletas_escalados = dados.get("atletas", [])
-                        capitao_id = dados.get("capitao_id", None)
+                # 2. CALCULA O TOTAL REAL SOMANDO DE CADA RODADA (1 até a última consolidada)
+                soma_historico_rodadas = 0.0
+                for r in range(1, rodada_ultima_consolidada + 1):
+                    res_r = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{r}", timeout=3)
+                    if res_r.status_code == 200:
+                        pts_r = float(res_r.json().get("pontos", 0.0))
+                        soma_historico_rodadas += pts_r
                         
-                        pontos_vivo = 0.0
-                        val_vivo = 0.0
-
-                        for atleta in atletas_escalados:
-                            a_id = str(atleta.get("atleta_id"))
-                            if a_id in atletas_ao_vivo:
-                                info_v = atletas_ao_vivo[a_id]
-                                p_atleta = float(info_v.get("pontuacao", 0.0))
-                                v_atleta = float(info_v.get("variacao_num", 0.0))
-
-                                if capitao_id and int(a_id) == int(capitao_id):
-                                    p_atleta *= 2
-
-                                pontos_vivo += p_atleta
-                                val_vivo += v_atleta
-
-                        pt_rodada = pontos_vivo
-                        valorizacao_rodada = val_vivo
-                else:
-                    # 2. MERCADO ABERTO/CONSOLIDADO (Status 1) -> Busca pontuação da última rodada
-                    if rodada_ultima_consolidada >= 1:
-                        res_uc = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
-                        if res_uc.status_code == 200:
-                            dados_uc = res_uc.json()
-                            pt_rodada = float(dados_uc.get("pontos", 0.0))
-                            
-                            atletas_uc = dados_uc.get("atletas", [])
-                            if atletas_uc:
+                        # Captura a pontuação da última rodada consolidada
+                        if r == rodada_ultima_consolidada:
+                            pt_rodada = pts_r
+                            atletas_uc = res_r.json().get("atletas", [])
+                            if atletas_uc and status_mercado == 1:
                                 valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
+                        
+                        # Captura a penúltima rodada
+                        if r == rodada_penultima:
+                            pt_rodada_anterior = pts_r
 
-                # 3. Busca penúltima rodada
-                if rodada_penultima >= 1:
-                    res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
-                    if res_ant.status_code == 200:
-                        pt_rodada_anterior = float(res_ant.json().get("pontos", 0.0))
+                total_acumulado = soma_historico_rodadas
+
+                # 3. Se estiver AO VIVO (Status 2), soma as parciais dos atletas no campo ao total
+                if status_mercado == 2 and atletas_ao_vivo and res_p.status_code == 200:
+                    dados = res_p.json()
+                    atletas_escalados = dados.get("atletas", [])
+                    capitao_id = dados.get("capitao_id", None)
+                    
+                    pontos_vivo = 0.0
+                    val_vivo = 0.0
+
+                    for atleta in atletas_escalados:
+                        a_id = str(atleta.get("atleta_id"))
+                        if a_id in atletas_ao_vivo:
+                            info_v = atletas_ao_vivo[a_id]
+                            p_atleta = float(info_v.get("pontuacao", 0.0))
+                            v_atleta = float(info_v.get("variacao_num", 0.0))
+
+                            if capitao_id and int(a_id) == int(capitao_id):
+                                p_atleta *= 2
+
+                            pontos_vivo += p_atleta
+                            val_vivo += v_atleta
+
+                    pt_rodada = pontos_vivo
+                    valorizacao_rodada = val_vivo
+                    total_acumulado += pt_rodada
 
             except Exception:
                 pass
 
-        # === REGRA DE OURO INVIOLÁVEL ===
-        # O Total Geral SEMPRE é a base histórica do CSV + os pontos conquistados na rodada.
-        total_acumulado = pontos_base_historico + pt_rodada
+        # Fallback de emergência (apenas se a API falhar completamente)
+        if total_acumulado == 0.0:
+            try:
+                total_acumulado = float(row.get("Total", 0.0))
+            except Exception:
+                total_acumulado = 0.0
 
         lista_times.append({
             "Time": nome_time,
@@ -674,7 +675,7 @@ with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados e somados ao histórico do CSV.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Total recalculado rodada a rodada diretamente da API do Cartola.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 FORÇAR RECARGA / ATUALIZAR TABELA", use_container_width=True):
