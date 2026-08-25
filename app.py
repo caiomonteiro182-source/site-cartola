@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Converte a logo em Base64 para inserção direta no HTML
+# 2. Converte a logo em Base64
 def carregar_logo_base64():
     for ext in ["logo.png", "logo.jpg", "logo.jpeg"]:
         if os.path.exists(ext):
@@ -24,19 +24,17 @@ def carregar_logo_base64():
 
 URL_BASE64_LOGO = carregar_logo_base64()
 
-# 3. Estilização Cyberpunk Neon + Layout Responsivo
+# 3. Estilização Cyberpunk Neon + CSS Responsivo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
 
-    /* Fundo Geral Escuro / Cyberpunk */
     .stApp {
         background: radial-gradient(circle at top center, #1e0b36 0%, #0a0813 60%, #030206 100%);
         color: #f1f5f9;
         font-family: 'Rajdhani', sans-serif;
     }
 
-    /* CONTÊINER DO CABEÇALHO DA LIGA (DESKTOP) */
     .header-main-flex {
         display: flex;
         align-items: center;
@@ -50,7 +48,6 @@ st.markdown("""
         object-fit: contain;
     }
 
-    /* Cabeçalhos Neon */
     h1 {
         font-family: 'Teko', sans-serif !important;
         font-size: 52px !important;
@@ -70,7 +67,6 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* CONTÊINER DO TÍTULO + TEMPORIZADOR */
     .header-title-container {
         display: flex;
         align-items: center;
@@ -78,7 +74,6 @@ st.markdown("""
         flex-wrap: wrap;
     }
 
-    /* ESTILO DO BANNER CONTADOR */
     .market-timer-inline-open {
         background: #ccff00;
         color: #0a0813;
@@ -113,7 +108,6 @@ st.markdown("""
         white-space: nowrap;
     }
 
-    /* Estilo do Subtítulo e Link */
     .subtitle-header {
         color: #c084fc;
         font-weight: 700;
@@ -136,7 +130,6 @@ st.markdown("""
         transition: all 0.3s ease;
     }
 
-    /* PAINEL FIXO DE JOGOS */
     .matches-panel-container {
         width: 100%;
         background: rgba(10, 8, 19, 0.85);
@@ -212,7 +205,6 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* CARDS DE ESTATÍSTICA */
     .box-m1 {
         background: rgba(10, 8, 19, 0.85);
         border-radius: 12px;
@@ -313,7 +305,6 @@ st.markdown("""
         margin: 15px 0 !important;
     }
 
-    /* --- REGRAS EXCLUSIVAS PARA CELULAR (TELA < 768px) --- */
     @media (max-width: 768px) {
         .header-main-flex {
             flex-direction: column !important;
@@ -381,8 +372,8 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Carregamento dos dados da Liga (Com Soma Incremental Atualizada)
-@st.cache_data(ttl=120)
+# 4. Carregamento Sincronizado Direto da API de Liga
+@st.cache_data(ttl=60)
 def carregar_dados_liga():
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -401,6 +392,22 @@ def carregar_dados_liga():
     except Exception:
         pass
 
+    # 1. Tenta obter o Ranking Oficial em Tempo Real da Liga Black Guys
+    times_liga_oficial = {}
+    try:
+        res_liga = session.get("https://api.cartola.globo.com/liga/blackguys-league", timeout=5)
+        if res_liga.status_code == 200:
+            dados_liga = res_liga.json()
+            for t in dados_liga.get("times", []):
+                t_id = t.get("time_id")
+                times_liga_oficial[t_id] = {
+                    "total_pontos": float(t.get("pontos", {}).get("total", 0.0) if isinstance(t.get("pontos"), dict) else t.get("pontos", 0.0)),
+                    "rodada_pontos": float(t.get("pontos", {}).get("rodada", 0.0) if isinstance(t.get("pontos"), dict) else 0.0),
+                    "variacao_patrimonio": float(t.get("variacao_patrimonio", 0.0))
+                }
+    except Exception:
+        pass
+
     df_base = None
     for csv_file in ["base_cartola_oficial.csv", "base_cartola.csv"]:
         if os.path.exists(csv_file):
@@ -412,7 +419,7 @@ def carregar_dados_liga():
                 pass
 
     if df_base is None:
-        st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado no GitHub!")
+        st.error("⚠️ O arquivo CSV de base ('base_cartola_oficial.csv') não foi encontrado!")
         return pd.DataFrame(), rodada_cartola, status_mercado, info_fechamento
 
     atletas_ao_vivo = {}
@@ -449,9 +456,14 @@ def carregar_dados_liga():
         pt_rodada_anterior = 0.0
         patrimonio = 100.0
         valorizacao_rodada = 0.0
+        total_oficial_cartola = None
 
         if time_id:
             try:
+                # Se o time existe na API oficial da Liga, extrai o Total oficial exato
+                if time_id in times_liga_oficial:
+                    total_oficial_cartola = times_liga_oficial[time_id]["total_pontos"]
+
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     dados = res_p.json()
@@ -490,14 +502,6 @@ def carregar_dados_liga():
                         if val_api is not None and float(val_api) != 0.0:
                             valorizacao_rodada = float(val_api)
 
-                if valorizacao_rodada == 0.0 and rodada_ultima_consolidada >= 1:
-                    res_at = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_ultima_consolidada}", timeout=3)
-                    if res_at.status_code == 200:
-                        dados_at = res_at.json()
-                        atletas = dados_at.get("atletas", [])
-                        if atletas:
-                            valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas])
-
                 if rodada_penultima >= 1:
                     res_ant = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{rodada_penultima}", timeout=3)
                     if res_ant.status_code == 200:
@@ -505,8 +509,14 @@ def carregar_dados_liga():
             except Exception:
                 pass
 
-        # ACÚMULO INCREMENTAL: Pontos da rodada somados diretamente à base
-        total_acumulado = pontos_base_historico + pt_rodada
+        # LÓGICA DE DECISÃO DE TOTAL ACUMULADO
+        # Prioridade 1: Total Oficial retornado diretamente da API da Liga
+        # Prioridade 2: Em tempo real ao vivo (status 2), soma base + pontos parciais ao vivo
+        # Prioridade 3: Fallback de segurança (Soma Base + Última Rodada)
+        if total_oficial_cartola is not None and status_mercado != 2:
+            total_acumulado = total_oficial_cartola
+        else:
+            total_acumulado = pontos_base_historico + pt_rodada
 
         lista_times.append({
             "Time": nome_time,
@@ -656,7 +666,7 @@ if lista_partidas:
         </div>
     """, unsafe_allow_html=True)
 
-# --- 9. CABEÇALHO UNIFICADO VIA HTML/BASE64 ---
+# --- 9. CABEÇALHO UNIFICADO ---
 badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
 img_logo_html = f'<img src="{URL_BASE64_LOGO}" class="header-logo-img" alt="Logo">' if URL_BASE64_LOGO else ''
 
@@ -676,14 +686,16 @@ st.markdown(f"""
 
 st.divider()
 
-# Botão de Atualização Manual
+# --- BOTÃO DE ATUALIZAÇÃO FORÇADA ---
 col_status, col_btn = st.columns([3, 1])
 with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
+    else:
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados diretamente com a Liga Oficial do Cartola FC.</h5>", unsafe_allow_html=True)
 
 with col_btn:
-    if st.button("🔄 Atualizar Ao Vivo"):
+    if st.button("🔄 FORÇAR RECARGA / ATUALIZAR TABELA", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
