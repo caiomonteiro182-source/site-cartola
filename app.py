@@ -3,9 +3,14 @@ import pandas as pd
 import requests
 import os
 import base64
+import re
+import json
+import time
 from datetime import datetime
 
-# 1. Configuração da Página
+# ==========================================
+# 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS CYBERPUNK
+# ==========================================
 st.set_page_config(
     page_title="Black Guys League - Cartola FC",
     page_icon="⚽",
@@ -13,7 +18,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. Converte a logo em Base64
 def carregar_logo_base64():
     for ext in ["logo.png", "logo.jpg", "logo.jpeg"]:
         if os.path.exists(ext):
@@ -24,7 +28,6 @@ def carregar_logo_base64():
 
 URL_BASE64_LOGO = carregar_logo_base64()
 
-# 3. Estilização Cyberpunk Neon + Layout Responsivo
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
@@ -127,7 +130,6 @@ st.markdown("""
         background: rgba(0, 242, 255, 0.08);
         border: 1px solid rgba(0, 242, 255, 0.4);
         border-radius: 6px;
-        transition: all 0.3s ease;
     }
 
     .matches-panel-container {
@@ -148,9 +150,6 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
     }
 
     .matches-grid {
@@ -158,15 +157,6 @@ st.markdown("""
         gap: 10px;
         overflow-x: auto;
         padding-bottom: 8px;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .matches-grid::-webkit-scrollbar {
-        height: 5px;
-    }
-    .matches-grid::-webkit-scrollbar-thumb {
-        background: #a855f7;
-        border-radius: 4px;
     }
 
     .match-card {
@@ -186,7 +176,6 @@ st.markdown("""
         width: 36px !important;
         height: 36px !important;
         object-fit: contain !important;
-        display: block !important;
     }
 
     .match-score {
@@ -194,15 +183,6 @@ st.markdown("""
         font-size: 20px;
         font-weight: bold;
         color: #ffffff;
-        letter-spacing: 1px;
-        text-align: center;
-    }
-
-    .match-vs {
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 12px;
-        color: #94a3b8;
-        font-weight: bold;
     }
 
     .box-m1 {
@@ -228,7 +208,6 @@ st.markdown("""
         font-weight: bold;
         color: #94a3b8;
         text-transform: uppercase;
-        letter-spacing: 1px;
     }
 
     .val-num {
@@ -240,17 +219,8 @@ st.markdown("""
         margin-right: 8px;
     }
 
-    .txt-up {
-        color: #22c55e !important;
-        font-size: 22px;
-        font-weight: bold;
-    }
-
-    .txt-down {
-        color: #ef4444 !important;
-        font-size: 22px;
-        font-weight: bold;
-    }
+    .txt-up { color: #22c55e !important; font-size: 22px; font-weight: bold; }
+    .txt-down { color: #ef4444 !important; font-size: 22px; font-weight: bold; }
 
     div[data-testid="stMetric"] {
         background: rgba(18, 12, 38, 0.75);
@@ -258,7 +228,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
         padding: 12px 16px;
         border-radius: 12px;
-        margin-bottom: 8px;
     }
 
     button[data-baseweb="tab"] {
@@ -288,7 +257,6 @@ st.markdown("""
         border: 2px solid #eab308;
         border-radius: 12px;
         padding: 14px;
-        margin-bottom: 10px;
         text-align: center;
     }
 
@@ -300,69 +268,17 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
+    .card-scout-player {
+        background: rgba(10, 8, 19, 0.85);
+        border: 1px solid rgba(0, 242, 255, 0.3);
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         margin: 15px 0 !important;
-    }
-
-    @media (max-width: 768px) {
-        .header-main-flex {
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            text-align: center !important;
-            width: 100% !important;
-        }
-
-        .header-logo-img {
-            display: block !important;
-            margin: 0 auto 12px auto !important;
-            width: 140px !important;
-        }
-
-        h1 {
-            font-size: 38px !important;
-            text-align: center !important;
-            width: 100% !important;
-        }
-
-        .header-title-container {
-            justify-content: center !important;
-            flex-direction: column !important;
-            gap: 8px !important;
-            width: 100% !important;
-        }
-
-        .market-timer-inline-open, .market-timer-inline-closed {
-            font-size: 18px !important;
-            padding: 4px 10px !important;
-            margin-top: 4px !important;
-        }
-
-        .subtitle-header {
-            text-align: center !important;
-            font-size: 13px !important;
-            width: 100% !important;
-        }
-
-        .header-col-wrapper {
-            text-align: center !important;
-            width: 100% !important;
-        }
-
-        .link-liga {
-            width: 100% !important;
-            text-align: center !important;
-            margin-top: 6px !important;
-        }
-
-        .val-num {
-            font-size: 36px !important;
-        }
-
-        .matches-panel-container {
-            padding: 10px !important;
-        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -372,7 +288,9 @@ HEADERS = {
     "Accept": "application/json"
 }
 
-# 4. Processamento Inteligente: Calcula o acumulado somando o histórico real de todas as rodadas
+# ==========================================
+# 2. SISTEMA DA BLACK GUYS LEAGUE (TABELA & HISTÓRICO)
+# ==========================================
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -416,8 +334,6 @@ def carregar_dados_liga():
             pass
 
     lista_times = []
-    
-    # Define limite de rodadas consolidadas
     rodada_ultima_consolidada = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
     rodada_penultima = rodada_ultima_consolidada - 1
 
@@ -439,12 +355,10 @@ def carregar_dados_liga():
 
         if time_id:
             try:
-                # 1. Pega patrimônio atual do time
                 res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
                 if res_p.status_code == 200:
                     patrimonio = float(res_p.json().get("patrimonio", 100.0))
 
-                # 2. CALCULA O TOTAL REAL SOMANDO DE CADA RODADA (1 até a última consolidada)
                 soma_historico_rodadas = 0.0
                 for r in range(1, rodada_ultima_consolidada + 1):
                     res_r = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{r}", timeout=3)
@@ -452,20 +366,17 @@ def carregar_dados_liga():
                         pts_r = float(res_r.json().get("pontos", 0.0))
                         soma_historico_rodadas += pts_r
                         
-                        # Captura a pontuação da última rodada consolidada
                         if r == rodada_ultima_consolidada:
                             pt_rodada = pts_r
                             atletas_uc = res_r.json().get("atletas", [])
                             if atletas_uc and status_mercado == 1:
                                 valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
                         
-                        # Captura a penúltima rodada
                         if r == rodada_penultima:
                             pt_rodada_anterior = pts_r
 
                 total_acumulado = soma_historico_rodadas
 
-                # 3. Se estiver AO VIVO (Status 2), soma as parciais dos atletas no campo ao total
                 if status_mercado == 2 and atletas_ao_vivo and res_p.status_code == 200:
                     dados = res_p.json()
                     atletas_escalados = dados.get("atletas", [])
@@ -494,7 +405,6 @@ def carregar_dados_liga():
             except Exception:
                 pass
 
-        # Fallback de emergência (apenas se a API falhar completamente)
         if total_acumulado == 0.0:
             try:
                 total_acumulado = float(row.get("Total", 0.0))
@@ -523,7 +433,6 @@ def carregar_dados_liga():
 
     return df, rodada_cartola, status_mercado, info_fechamento
 
-# 5. Contador de Mercado
 def gerar_badge_mercado(info_fechamento, status_mercado):
     if status_mercado != 1 or not info_fechamento:
         return '<span class="market-timer-inline-closed">🔒 MERCADO FECHADO</span>'
@@ -556,7 +465,6 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
     except Exception:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
-# 6. Busca de partidas e escudos da API do Cartola FC
 @st.cache_data(ttl=120)
 def carregar_partidas_com_escudos(num_rodada):
     try:
@@ -570,36 +478,30 @@ def carregar_partidas_com_escudos(num_rodada):
             for p in partidas:
                 id_casa = str(p.get("clube_casa_id"))
                 id_vis = str(p.get("clube_visitante_id"))
-                
                 clube_casa = clubes.get(id_casa, {})
                 clube_vis = clubes.get(id_vis, {})
                 
                 nome_casa = clube_casa.get("nome", "").upper()
                 nome_vis = clube_vis.get("nome", "").upper()
-                
                 escudos_casa = clube_casa.get("escudos", {})
                 escudos_vis = clube_vis.get("escudos", {})
                 
-                escudo_casa = escudos_casa.get("60x60") or escudos_casa.get("45x45") or escudos_casa.get("30x30") or ""
-                escudo_vis = escudos_vis.get("60x60") or escudos_vis.get("45x45") or escudos_vis.get("30x30") or ""
-                
-                placar_casa = p.get("placar_oficial_mandante")
-                placar_vis = p.get("placar_oficial_visitante")
+                escudo_casa = escudos_casa.get("60x60") or escudos_casa.get("30x30") or ""
+                escudo_vis = escudos_vis.get("60x60") or escudos_vis.get("30x30") or ""
                 
                 jogos.append({
                     "escudo_casa": escudo_casa,
                     "escudo_vis": escudo_vis,
                     "nome_casa": nome_casa,
                     "nome_vis": nome_vis,
-                    "placar_casa": placar_casa,
-                    "placar_vis": placar_vis
+                    "placar_casa": p.get("placar_oficial_mandante"),
+                    "placar_vis": p.get("placar_oficial_visitante")
                 })
             return jogos
     except Exception:
         pass
     return []
 
-# 7. Carregar Vencedores do Mês
 @st.cache_data(ttl=120)
 def carregar_base_vencedores():
     if os.path.exists("base_vencedores.csv"):
@@ -611,22 +513,127 @@ def carregar_base_vencedores():
             return None
     return None
 
-# Carregamento dos dados
+# ==========================================
+# 3. MÓDULO DO CARTOLA SCOUT LAB (INTEGRADO DO ANEXO)
+# ==========================================
+def get_gatomestre_highlights():
+    url = "https://gatomestre.ge.globo.com/mais-escalados-do-cartola/"
+    try:
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 CartolaScoutLab/0.1"}, timeout=10)
+        if res.status_code == 200:
+            html = res.text
+            pattern = re.compile(
+                r'<div data-atletaid="(?P<id>\d+)" data-atletaficha="titulares-atleta-\d+"'
+                r'(?P<block>.*?)(?=<div data-atletaid=|<div class="banco-reservas-wrapper")',
+                re.S
+            )
+            output = []
+            for match in pattern.finditer(html):
+                block = match.group("block")
+                position = re.search(r"cartola-atletas--posicao__([a-z]+)", block)
+                count = re.search(r"GM-pontuacao-flutuante[^>]*>\s*([\d.,]+)", block)
+                name = re.search(r'class="apelido-abreviado">([^<]+)<', block)
+                if name:
+                    output.append({
+                        "atleta_id": int(match.group("id")),
+                        "apelido": name.group(1).strip(),
+                        "posicao": position.group(1).upper() if position else "",
+                        "escalacoes": count.group(1).strip() if count else "0",
+                    })
+            return output
+    except Exception:
+        pass
+    return []
+
+def get_public_odds():
+    url = "https://melhorodds.com.br/futebol/brasileirao-serie-a"
+    try:
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 CartolaScoutLab/0.1"}, timeout=10)
+        if res.status_code == 200:
+            html = res.text
+            output = []
+            for block in re.findall(r"<details[^>]*>(.*?)</details>", html, re.S):
+                summary = block.split("</summary>", 1)[0]
+                teams = re.findall(r'class="dados truncate[^\"]*">([^<]+)</span>', summary)
+                if len(teams) < 2:
+                    continue
+                houses = {}
+                for row in re.findall(r"<tr>(.*?)</tr>", block, re.S):
+                    house = re.search(r'class="dados text-\[[^\"]+\][^\"]*">([^<]+)</span>', row)
+                    values = re.findall(r'class="dados block[^\"]*">([\d.,]+)</span>', row)
+                    if house and len(values) >= 3 and house.group(1).strip().lower() in {"betano", "bet365"}:
+                        houses[house.group(1).strip()] = [float(v.replace('.', '').replace(',', '.')) for v in values[:3]]
+                if houses:
+                    output.append({"home": teams[0].strip(), "away": teams[1].strip(), "houses": houses})
+            return output
+    except Exception:
+        pass
+    return []
+
+@st.cache_data(ttl=300)
+def carregar_dados_completos_scout():
+    """Consolida os dados do mercado, mais escalados do Gato Mestre e Odds."""
+    try:
+        res_m = requests.get("https://api.cartola.globo.com/atletas/mercado", headers=HEADERS, timeout=5)
+        res_c = requests.get("https://api.cartola.globo.com/clubes", headers=HEADERS, timeout=5)
+        res_s = requests.get("https://api.cartola.globo.com/mercado/status", timeout=5)
+        
+        status = res_s.json() if res_s.status_code == 200 else {}
+        atletas = res_m.json().get("atletas", []) if res_m.status_code == 200 else []
+        clubes = res_c.json() if res_c.status_code == 200 else {}
+        
+        destaques = get_gatomestre_highlights()
+        odds = get_public_odds()
+
+        posicoes = {1: "GOL", 2: "LAT", 3: "ZAG", 4: "MEI", 5: "ATA", 6: "TEC"}
+        
+        lista_final = []
+        for a in atletas:
+            cid = str(a.get("clube_id"))
+            clube_info = clubes.get(cid, {}) if isinstance(clubes, dict) else {}
+            clube_nome = clube_info.get("nome", "Time")
+            
+            media = float(a.get("media_num", 0.0))
+            preco = float(a.get("preco_num", 0.0))
+            status_id = a.get("status_id")
+
+            # Cálculo do Scout Lab (Projeção e Pontuação de Ajuste)
+            projecao = media * 1.15 if status_id == 7 else media * 0.85
+            score = (projecao * 0.60) + ((projecao / max(0.1, preco)) * 4.0)
+
+            lista_final.append({
+                "atleta_id": a.get("atleta_id"),
+                "jogador": a.get("apelido", "Atleta"),
+                "time": clube_nome,
+                "posicao": posicoes.get(a.get("posicao_id"), "MEI"),
+                "preco": preco,
+                "media": media,
+                "projecao": round(projecao, 2),
+                "score": round(score, 2),
+                "status_id": status_id,
+                "status": "Confirmado" if status_id == 7 else ("Em dúvida" if status_id == 2 else "Outro")
+            })
+            
+        return pd.DataFrame(lista_final), destaques, odds, status.get("rodada_atual", 1)
+    except Exception:
+        return pd.DataFrame(), [], [], 1
+
+# ==========================================
+# 4. CARREGAMENTO E INICIALIZAÇÃO DAS VARIÁVEIS
+# ==========================================
 df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
-# --- 8. PAINEL FIXO COM ESCUDOS DA API CARTOLA ---
+# ==========================================
+# 5. RENDERIZAÇÃO DO CABEÇALHO & JOGOS
+# ==========================================
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
 if lista_partidas:
     cards_html_list = []
     for j in lista_partidas:
-        if j["placar_casa"] is not None and j["placar_vis"] is not None:
-            placar_str = f'<div class="match-score">{j["placar_casa"]} x {j["placar_vis"]}</div>'
-        else:
-            placar_str = '<div class="match-vs">VS</div>'
-            
+        placar_str = f'<div class="match-score">{j["placar_casa"]} x {j["placar_vis"]}</div>' if j["placar_casa"] is not None else '<div class="match-score">VS</div>'
         card_item = (
             f'<div class="match-card">'
             f'<img src="{j["escudo_casa"]}" title="{j["nome_casa"]}">'
@@ -636,20 +643,13 @@ if lista_partidas:
         )
         cards_html_list.append(card_item)
 
-    cards_html = "".join(cards_html_list)
-
     st.markdown(f"""
         <div class="matches-panel-container">
-            <div class="matches-panel-header">
-                ⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]
-            </div>
-            <div class="matches-grid">
-                {cards_html}
-            </div>
+            <div class="matches-panel-header">⚽ BRASILEIRÃO {rodada_atual}ª RODADA [{status_tag}]</div>
+            <div class="matches-grid">{"".join(cards_html_list)}</div>
         </div>
     """, unsafe_allow_html=True)
 
-# --- 9. CABEÇALHO UNIFICADO ---
 badge_timer = gerar_badge_mercado(info_fechamento, status_mercado)
 img_logo_html = f'<img src="{URL_BASE64_LOGO}" class="header-logo-img" alt="Logo">' if URL_BASE64_LOGO else ''
 
@@ -661,7 +661,7 @@ st.markdown(f"""
                 <h1>BLACK GUYS LEAGUE</h1>
                 {badge_timer}
             </div>
-            <div class="subtitle-header">TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE</div>
+            <div class="subtitle-header">TEMPORADA 2026 • PORTAL OFICIAL DE PERFORMANCE & SCOUT LAB</div>
             <a href="https://cartola.globo.com/#!/competicoes/classica/blackguys-league" target="_blank" rel="noopener noreferrer" class="link-liga">🔗 Acessar Liga Oficial no Cartola FC</a>
         </div>
     </div>
@@ -669,23 +669,23 @@ st.markdown(f"""
 
 st.divider()
 
-# --- BOTÃO DE ATUALIZAÇÃO FORÇADA ---
 col_status, col_btn = st.columns([3, 1])
 with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Total recalculado rodada a rodada diretamente da API do Cartola.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados e calculados diretamente da API do Cartola FC.</h5>", unsafe_allow_html=True)
 
 with col_btn:
-    if st.button("🔄 FORÇAR RECARGA / ATUALIZAR TABELA", use_container_width=True):
+    if st.button("🔄 FORÇAR RECARGA / ATUALIZAR", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
-# --- 10. CARD DETALHADO INSTANTÂNEO ---
+# ==========================================
+# 6. PAINEL DE PERFORMANCE INDIVIDUAL
+# ==========================================
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
-    
     time_selecionado = st.selectbox("Selecione um time para ver a análise completa:", df["Time"].tolist())
     
     dados_time = df[df["Time"] == time_selecionado].iloc[0]
@@ -695,7 +695,6 @@ if not df.empty:
     pt_atual = dados_time["Pontos Ganhos (Última Rodada)"]
     pt_ant = dados_time["Pontos Rodada Anterior"]
     diff_pontos = pt_atual - pt_ant
-    
     html_diff_pontos = f'<span class="txt-up">↑ {diff_pontos:.2f}</span>' if diff_pontos >= 0 else f'<span class="txt-down">↓ {abs(diff_pontos):.2f}</span>'
     
     val_cartoletas = dados_time["Valorização (C$)"]
@@ -705,200 +704,172 @@ if not df.empty:
     st.markdown(f"<p style='color:#c084fc; font-weight:bold; margin-bottom:15px;'>Cartoleiro: {dados_time['Cartoleiro']} | Posição Geral: #{dados_time['Posição Geral']}</p>", unsafe_allow_html=True)
 
     c_box1, c_box2 = st.columns(2)
-    
     with c_box1:
-        st.markdown(
-            f'<div class="box-m1">'
-            f'<div class="lbl-title">⚽ ÚLTIMA PONTUAÇÃO</div>'
-            f'<div style="display:flex; align-items:baseline; margin-top:5px;">'
-            f'<span class="val-num">{pt_atual:.2f}</span>{html_diff_pontos}'
-            f'</div>'
-            f'<div style="margin-top:8px; font-size:13px; color:#94a3b8;">'
-            f'MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">{media_pontos_liga:.2f} pts</strong>'
-            f'</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
+        st.markdown(f'<div class="box-m1"><div class="lbl-title">⚽ ÚLTIMA PONTUAÇÃO</div><div style="display:flex; align-items:baseline; margin-top:5px;"><span class="val-num">{pt_atual:.2f}</span>{html_diff_pontos}</div><div style="margin-top:8px; font-size:13px; color:#94a3b8;">MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">{media_pontos_liga:.2f} pts</strong></div></div>', unsafe_allow_html=True)
 
     with c_box2:
-        st.markdown(
-            f'<div class="box-m2">'
-            f'<div class="lbl-title">💰 PATRIMÔNIO</div>'
-            f'<div style="display:flex; align-items:baseline; margin-top:5px;">'
-            f'<span class="val-num">C$ {dados_time["Patrimônio (C$)"]:.2f}</span>{html_val_cartoletas}'
-            f'</div>'
-            f'<div style="margin-top:8px; font-size:13px; color:#94a3b8;">'
-            f'MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong>'
-            f'</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
+        st.markdown(f'<div class="box-m2"><div class="lbl-title">💰 PATRIMÔNIO</div><div style="display:flex; align-items:baseline; margin-top:5px;"><span class="val-num">C$ {dados_time["Patrimônio (C$)"]:.2f}</span>{html_val_cartoletas}</div><div style="margin-top:8px; font-size:13px; color:#94a3b8;">MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong></div></div>', unsafe_allow_html=True)
 
     st.divider()
 
-    # --- VISUALIZAÇÃO DAS ABAS ---
+    # MÉTICAS SUPERIORES
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).iloc[0]
 
     k1, k2 = st.columns(2)
     k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total Acumulado']} pts")
-    
-    rotulo_mito = "🚀 MITO DA RODADA (AO VIVO)" if status_mercado == 2 else "🚀 MITO DA RODADA"
-    k2.metric(rotulo_mito, f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
+    k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
 
     st.write("")
 
-    tab1, tab2, tab3 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "💰 Guia de Valorização"])
+    # ==========================================
+    # 7. ABAS PRINCIPAIS + SCOUT LAB
+    # ==========================================
+    tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "💰 Guia de Valorização", "🤖 Cartola Scout Lab"])
 
     with tab1:
         st.subheader("⚡ Tabela de Posições e Desempenho da Liga")
-        
-        visao = st.radio(
-            "Selecione a ordem de visualização:",
-            ["Classificação Geral (Total Acumulado)", "Ranking da Última Rodada (Pontos Ganhos)"],
-            horizontal=True
-        )
-        
+        visao = st.radio("Selecione a ordem de visualização:", ["Classificação Geral (Total Acumulado)", "Ranking da Última Rodada (Pontos Ganhos)"], horizontal=True)
         st.write("")
         
         if visao == "Classificação Geral (Total Acumulado)":
             st.dataframe(
                 df[["Posição Geral", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado", "Dif. p/ Rival", "Dif. p/ Líder"]],
-                column_config={
-                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
-                        "Ganho na Rodada (pts)",
-                        format="%.2f"
-                    ),
-                    "Total Acumulado": st.column_config.NumberColumn(
-                        "Total Geral (pts)",
-                        format="%.2f"
-                    )
-                },
-                use_container_width=True,
-                hide_index=True
+                column_config={"Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Ganho na Rodada (pts)", format="%.2f"), "Total Acumulado": st.column_config.NumberColumn("Total Geral (pts)", format="%.2f")},
+                use_container_width=True, hide_index=True
             )
         else:
             df_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).reset_index(drop=True)
             df_rodada["Pos. Rodada"] = df_rodada.index + 1
             st.dataframe(
                 df_rodada[["Pos. Rodada", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado"]],
-                column_config={
-                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
-                        "Pontos Ganhos (Última Rodada)",
-                        format="+%.2f"
-                    )
-                },
-                use_container_width=True,
-                hide_index=True
+                column_config={"Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Pontos Ganhos (Última Rodada)", format="+%.2f")},
+                use_container_width=True, hide_index=True
             )
 
     with tab2:
         st.subheader("👑 Galeria de Campeões Mensais")
-        st.caption("Premiações e mitações mês a mês na Black Guys League.")
-        
         if df_vencedores is not None and not df_vencedores.empty:
             st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
-            st.write("")
-            st.divider()
-            
-            cols_v = st.columns(3)
-            idx_col = 0
-            
-            for _, row in df_vencedores.iterrows():
-                mes = row.get("Mês", row.get("Mes", "Mês"))
-                vencedor = row.get("Vencedor", row.get("Time", "-"))
-                pontos = row.get("Pontos", row.get("Pontuação", "-"))
-                cartoleiro = row.get("Cartoleiro", "")
-                
-                with cols_v[idx_col % 3]:
-                    st.markdown(f"""
-                        <div class="card-vencedor">
-                            <h4 style="color: #eab308; margin: 0;">🥇 {mes}</h4>
-                            <h3 style="color: #00f2ff; margin: 5px 0;">{vencedor}</h3>
-                            <p style="color: #c084fc; margin: 0; font-weight: bold;">{cartoleiro}</p>
-                            <p style="color: #e2e8f0; margin-top: 5px; font-size: 18px;"><strong>{pontos}</strong></p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                idx_col += 1
         else:
             st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
 
     with tab3:
         st.subheader("💰 Painel de Patrimônio & Valorização Ao Vivo")
-        st.caption("Diferença de cartoletas (C$) ganhas/perdidas na rodada e patrimônio acumulado.")
-
         df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
         df_val["Rank Valorização"] = df_val.index + 1
-
-        mais_rico = df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]
-        maior_val = df_val.iloc[0]
-
-        v1, v2 = st.columns(2)
-        v1.metric("💎 TIME MAIS RICO (PATRIMÔNIO)", f"{mais_rico['Time']}", f"C$ {mais_rico['Patrimônio (C$)']}")
-        
-        val_txt = f"+C$ {maior_val['Valorização (C$)']}" if maior_val['Valorização (C$)'] > 0 else f"C$ {maior_val['Valorização (C$)']}"
-        rotulo_val = "📈 MAIOR VALORIZAÇÃO DA RODADA (AO VIVO)" if status_mercado == 2 else "📈 MAIOR VALORIZAÇÃO NA RODADA"
-        v2.metric(rotulo_val, f"{maior_val['Time']}", val_txt)
-
-        st.write("")
-        st.markdown("### 📊 Variação de Cartoletas na Rodada")
-        
         st.dataframe(
             df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)", "Pontos Ganhos (Última Rodada)"]],
             column_config={
-                "Valorização (C$)": st.column_config.NumberColumn(
-                    "Valorização na Rodada (C$)",
-                    help="Cartoletas calculadas em tempo real durante a rodada",
-                    format="C$ %.2f"
-                ),
-                "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn(
-                    "Pontos Conquistados",
-                    format="%.2f pts"
-                ),
-                "Patrimônio (C$)": st.column_config.NumberColumn(
-                    "Patrimônio Total (C$)",
-                    format="C$ %.2f"
-                )
+                "Valorização (C$)": st.column_config.NumberColumn("Valorização na Rodada (C$)", format="C$ %.2f"),
+                "Patrimônio (C$)": st.column_config.NumberColumn("Patrimônio Total (C$)", format="C$ %.2f")
             },
-            use_container_width=True,
-            hide_index=True
+            use_container_width=True, hide_index=True
         )
 
-        st.divider()
-
-        st.markdown("### 📘 Guia Prático de Valorização")
+    with tab4:
+        st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência & Sugestão)")
+        st.caption("Um laboratório completo para comparar jogadores usando média, projeção, odds de casas de apostas e mais escalados do Gato Mestre.")
         
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("""
-            <div class="card-dica">
-                <h4 style="color: #00f2ff; margin-top:0;">1ª Rodada (A Regra dos 45%)</h4>
-                <p>Na 1ª rodada do campeonato, para um jogador valorizar ele precisa fazer aproximadamente <strong>45% do valor dele em pontos</strong>.</p>
-                <ul>
-                    <li>Jogador de C$ 10,00 precisa de ~ 4,5 pontos.</li>
-                    <li>Escalar jogadores mais baratos (C$ 5 a C$ 8) facilita a valorização.</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
+        df_scout_full, destaques_gm, odds_pub, r_num = carregar_dados_completos_scout()
 
-            st.markdown("""
-            <div class="card-dica">
-                <h4 style="color: #00f2ff; margin-top:0;">2ª Rodada (A Regra da Média)</h4>
-                <p>Na 2ª rodada o sistema calcula a <strong>média das duas rodadas</strong>. Jogadores que desvalorizaram na 1ª rodada mas pontuarem bem na 2ª tendem a valorizar bastante.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        if not df_scout_full.empty:
+            col_scout_left, col_scout_right = st.columns([1, 2])
 
-        with c2:
-            st.markdown("""
-            <div class="card-dica">
-                <h4 style="color: #a855f7; margin-top:0;">3ª Rodada em diante (Mínimo para Valorizar)</h4>
-                <p>A partir da 3ª rodada o algoritmo entra no formato padrão: a valorização depende do valor atual do atleta e do seu desempenho recente.</p>
-                <ul>
-                    <li>Jogadores que desvalorizaram na rodada anterior costumam ter um pontuação mínima menor para voltar a valorizar.</li>
-                    <li>Evite escalar jogadores muito caros após uma grande pontuação se o seu foco for ganhar cartoletas.</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
+            with col_scout_left:
+                st.markdown("### ⚙️ Parâmetros do Esquadrão")
+                orcamento = st.number_input("Patrimônio Disponível (C$):", min_value=30.0, max_value=300.0, value=140.0, step=0.5)
+                esquema_tatico = st.selectbox("Formação Tática:", ["4-3-3", "4-4-2", "3-5-2", "3-4-3", "5-3-2", "5-4-1"])
+                filtro_posicao = st.selectbox("Filtrar Posição Tabela:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
+                
+                btn_montar = st.button("🚀 Montar Escalação Ideal", use_container_width=True)
+
+            with col_scout_right:
+                st.markdown("### 📊 Destaques & Odds Integradas")
+                s1, s2 = st.columns(2)
+                s1.metric("Jogadores Analisados", len(df_scout_full))
+                s2.metric("Mais Escalados (Gato Mestre)", len(destaques_gm))
+
+            st.divider()
+
+            # Algoritmo de montagem
+            esquemas_dict = {
+                "4-3-3": {"GOL": 1, "LAT": 2, "ZAG": 2, "MEI": 3, "ATA": 3, "TEC": 1},
+                "4-4-2": {"GOL": 1, "LAT": 2, "ZAG": 2, "MEI": 4, "ATA": 2, "TEC": 1},
+                "3-5-2": {"GOL": 1, "LAT": 0, "ZAG": 3, "MEI": 5, "ATA": 2, "TEC": 1},
+                "3-4-3": {"GOL": 1, "LAT": 0, "ZAG": 3, "MEI": 4, "ATA": 3, "TEC": 1},
+                "5-3-2": {"GOL": 1, "LAT": 2, "ZAG": 3, "MEI": 3, "ATA": 2, "TEC": 1},
+                "5-4-1": {"GOL": 1, "LAT": 2, "ZAG": 3, "MEI": 4, "ATA": 1, "TEC": 1},
+            }
+
+            if btn_montar or "squad_gerado" not in st.session_state:
+                necessidade = esquemas_dict[esquema_tatico]
+                df_filtrado_status = df_scout_full[df_scout_full["status_id"].isin([7, 2])].sort_values(by="score", ascending=False)
+
+                titulares = []
+                reservas = []
+                custo_atual = 0.0
+
+                for pos, qtd in necessidade.items():
+                    if qtd > 0:
+                        opcoes_pos = df_filtrado_status[df_filtrado_status["posicao"] == pos]
+                        for _, atleta in opcoes_pos.iterrows():
+                            if len([x for x in titulares if x["posicao"] == pos]) < qtd:
+                                if custo_atual + atleta["preco"] <= orcamento:
+                                    titulares.append(atleta)
+                                    custo_atual += atleta["preco"]
+                            elif len([x for x in reservas if x["posicao"] == pos]) < 1:
+                                reservas.append(atleta)
+
+                st.session_state["squad_gerado"] = pd.DataFrame(titulares)
+                st.session_state["reservas_gerado"] = pd.DataFrame(reservas)
+                st.session_state["custo_squad"] = custo_atual
+
+            # Exibição do Time Sugerido
+            df_titulares = st.session_state.get("squad_gerado", pd.DataFrame())
+            custo_time = st.session_state.get("custo_squad", 0.0)
+
+            c_tit, c_cap = st.columns([2, 1])
+
+            with c_tit:
+                st.markdown(f"### 🛡️ Base Sugerida ({esquema_tatico}) - Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}")
+                if not df_titulares.empty:
+                    st.dataframe(
+                        df_titulares[["posicao", "jogador", "time", "preco", "media", "projecao", "status"]],
+                        column_config={
+                            "posicao": "Posição",
+                            "jogador": "Atleta",
+                            "time": "Clube",
+                            "preco": st.column_config.NumberColumn("Custo", format="C$ %.2f"),
+                            "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts")
+                        },
+                        use_container_width=True, hide_index=True
+                    )
+
+            with c_cap:
+                st.markdown("### ⭐ Capitães Recomendados")
+                if not df_titulares.empty:
+                    capitaes = df_titulares[df_titulares["posicao"] != "TEC"].sort_values(by="projecao", ascending=False).head(3)
+                    for i, (_, cap) in enumerate(capitaes.iterrows()):
+                        st.markdown(f"""
+                            <div class="card-scout-player">
+                                <strong>{i+1}º Capitão: {cap['jogador']}</strong> ({cap['time']})<br>
+                                Posição: {cap['posicao']} | Projeção: <span style="color:#00f2ff; font-weight:bold;">{cap['projecao']} pts</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+            # Tabela Geral de Ranking do Scout
+            st.markdown("### 🏆 Ranking de Oportunidades do Mercado")
+            df_scout_view = df_scout_full if filtro_posicao == "TODAS" else df_scout_full[df_scout_full["posicao"] == filtro_posicao]
+            st.dataframe(
+                df_scout_view[["jogador", "time", "posicao", "preco", "media", "projecao", "score", "status"]],
+                column_config={
+                    "preco": st.column_config.NumberColumn("Preço", format="C$ %.2f"),
+                    "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts"),
+                    "score": st.column_config.NumberColumn("Score de Compra", format="%.2f")
+                },
+                use_container_width=True, hide_index=True
+            )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sincronizado automaticamente via API Cartola FC.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sistema integrado com Scout Lab.")
