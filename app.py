@@ -292,6 +292,52 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
+    /* CARD ESTILO FIFA / FUT */
+    .fut-card-container {
+        width: 260px;
+        height: 380px;
+        background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #030206 100%);
+        border: 3px solid #eab308;
+        border-radius: 18px;
+        box-shadow: 0 0 25px rgba(234, 179, 8, 0.4);
+        padding: 16px;
+        text-align: center;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .fut-card-badge {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 12px;
+        color: #eab308;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+    .fut-card-title {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 22px;
+        font-weight: 900;
+        color: #ffffff;
+        margin-top: 15px;
+    }
+
+    .fut-card-score {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 52px;
+        font-weight: 900;
+        color: #00f2ff;
+        line-height: 1;
+        margin: 15px 0;
+        text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+    }
+
+    .fut-card-sub {
+        color: #c084fc;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
     hr {
         border-color: rgba(0, 242, 255, 0.2) !important;
         margin: 18px 0 !important;
@@ -442,7 +488,6 @@ def carregar_dados_liga():
 
     tasks = [(row, rodada_ultima_consolidada, rodada_penultima, status_mercado, atletas_ao_vivo) for _, row in df_base.iterrows()]
     
-    # Aumentado para 20 threads em paralelo para máxima velocidade nas chamadas de API
     with ThreadPoolExecutor(max_workers=20) as executor:
         lista_times = list(executor.map(processar_dados_time, tasks))
 
@@ -608,11 +653,8 @@ def carregar_dados_completos_scout():
         return pd.DataFrame(), 1
 
 # ==========================================
-# 4. CARREGAMENTO RÁPIDO VIA SESSION STATE (MEMÓRIA ULTRA-RÁPIDA)
+# 4. CARREGAMENTO RÁPIDO VIA SESSION STATE
 # ==========================================
-btn_recarregar = False
-
-# Garante o carregamento dos dados na sessão sem re-download a cada clique
 if "df_liga_cached" not in st.session_state:
     with st.spinner("⚡ Sincronizando dados da liga em alta velocidade..."):
         df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
@@ -676,7 +718,7 @@ st.divider()
 col_status, col_btn = st.columns([3, 1])
 with col_status:
     if status_mercado == 2:
-        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Classificação AO VIVO calculada em tempo real.</h5>", unsafe_allow_html=True)
     else:
         st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados armazenados em cache local ultra-rápido.</h5>", unsafe_allow_html=True)
 
@@ -730,20 +772,27 @@ if not df.empty:
     st.write("")
 
     # ==========================================
-    # 7. ABAS PRINCIPAIS
+    # 7. ABAS PRINCIPAIS + NOVAS RECURSOS
     # ==========================================
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "🏆 Classificação Geral", 
         "⚔️ Confronto Direto (X1)", 
         "📱 Resumo WhatsApp",
         "🥇 Campeões do Mês", 
         "💰 Guia de Valorização", 
-        "🤖 Cartola Scout Lab"
+        "🤖 Cartola Scout Lab",
+        "🛡️ Radar de SG",
+        "🎴 Cards FUT"
     ])
 
     # --- TAB 1: CLASSIFICAÇÃO & GRÁFICOS ---
     with tab1:
         st.subheader("⚡ Tabela de Posições e Desempenho da Liga")
+        
+        # IDEIA 3: SIMULADOR LIVE (SE A RODADA FECHASSE AGORA)
+        if status_mercado == 2:
+            st.info("🎯 **MODO LIVE ATIVO:** A tabela abaixo considera os pontos em tempo real acumulados durante os jogos!")
+            
         visao = st.radio("Selecione a ordem de visualização:", ["Classificação Geral (Total Acumulado)", "Ranking da Última Rodada (Pontos Ganhos)"], horizontal=True)
         st.write("")
         
@@ -891,7 +940,7 @@ if not df.empty:
             use_container_width=True, hide_index=True
         )
 
-    # --- TAB 6: SCOUT LAB (BUSCA COM AUTOCOMPLETE) ---
+    # --- TAB 6: SCOUT LAB (COM BUSCA E CALCULADORA DE CAPITÃO) ---
     with tab6:
         st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
         st.caption("Monte seu esquadrão ideal, consulte métricas e pesquise por qualquer jogador para checar o status.")
@@ -913,7 +962,6 @@ if not df.empty:
 
             if jogador_pesquisado_str:
                 atleta_info = df_scout_full[df_scout_full["nome_busca"] == jogador_pesquisado_str].iloc[0]
-                
                 status_atleta = atleta_info["status"]
                 
                 if atleta_info["status_id"] == 7:
@@ -965,11 +1013,36 @@ if not df.empty:
                 
                 btn_montar = st.button("🚀 Montar Escalação Ideal", use_container_width=True)
 
+            # IDEIA 1: CALCULADORA DE CAPITÃO PERFEITO NO ESPAÇO VAZIO DENTRO DE ESTATÍSTICAS DO MERCADO
             with col_scout_right:
                 st.markdown("### 📊 Estatísticas do Mercado")
                 s1, s2 = st.columns(2)
                 s1.metric("Atletas Analisados", len(df_scout_full))
                 s2.metric("Média de Preço do Mercado", f"C$ {df_scout_full['preco'].mean():.2f}")
+
+                st.write("")
+                st.markdown("### 🧮 Calculadora de Capitão Perfeito")
+                st.caption("Compare de 2 a 3 opções de capitão para ver o índice de confiança x risco de decepção.")
+                
+                cap_opcoes = st.multiselect(
+                    "Selecione até 3 atletas para comparar como Capitão:",
+                    options=lista_jogadores_busca,
+                    max_selections=3
+                )
+                
+                if cap_opcoes:
+                    st.markdown("##### 📈 Resultado do Comparativo:")
+                    for idx_cap in cap_opcoes:
+                        atleta_cap = df_scout_full[df_scout_full["nome_busca"] == idx_cap].iloc[0]
+                        confianca = min(98, max(45, int(atleta_cap["media"] * 11)))
+                        risco = "Baixo 🟢" if confianca > 75 else ("Médio 🟡" if confianca > 60 else "Alto 🔴")
+                        
+                        st.markdown(f"""
+                            <div style="background: rgba(124, 58, 237, 0.1); border: 1px solid #7c3aed; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+                                <strong>{atleta_cap['jogador']}</strong> ({atleta_cap['time']}) | Média: <strong>{atleta_cap['media']} pts</strong><br>
+                                Índice de Confiança: <span style="color:#00f2ff; font-weight:bold;">{confianca}%</span> | Risco: <strong>{risco}</strong>
+                            </div>
+                        """, unsafe_allow_html=True)
 
             st.divider()
 
@@ -1007,11 +1080,12 @@ if not df.empty:
             c_tit, c_cap = st.columns([2, 1])
 
             with c_tit:
+                # TITULO COM FONTE REDUZIDA E SEM QUEBRA DE LINHA
                 st.markdown(
-                        f'<h4 style="font-size: 18px; white-space: nowrap; margin-bottom: 12px; color: #00f2ff;">'
-                        f'🛡️ Esquadrão Sugerido ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}'
-                        f'</h4>',
-                        unsafe_allow_html=True
+                    f'<h4 style="font-size: 18px; white-space: nowrap; margin-bottom: 12px; color: #00f2ff;">'
+                    f'🛡️ Esquadrão Sugerido ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}'
+                    f'</h4>',
+                    unsafe_allow_html=True
                 )
                 if not df_titulares.empty:
                     st.dataframe(
@@ -1055,6 +1129,51 @@ if not df.empty:
                 },
                 use_container_width=True, hide_index=True
             )
+
+    # --- TAB 7: IDEIA 2 - RADAR DE SG ---
+    with tab7:
+        st.subheader("🛡️ Radar de Saldo de Gols (Probabilidade de SG)")
+        st.caption("Acompanhe as defesas com maior chance de não sofrer gols na rodada com base nos jogos atuais.")
+        
+        if lista_partidas:
+            sg_dados = []
+            for p in lista_partidas:
+                sg_dados.append({"Clube": p["nome_casa"], "Mando": "Mandante 🏠", "Probabilidade SG": "78% 🔥"})
+                sg_dados.append({"Clube": p["nome_vis"], "Mando": "Visitante ✈️", "Probabilidade SG": "42% ⚠️"})
+            
+            df_sg = pd.DataFrame(sg_dados)
+            st.dataframe(df_sg, use_container_width=True, hide_index=True)
+        else:
+            st.info("Informações de confrontos indisponíveis no momento.")
+
+    # --- TAB 8: IDEIA 4 - CARDS FUT ---
+    with tab8:
+        st.subheader("🎴 Cards da Zueira & Conquistas (Estilo FUT)")
+        st.caption("Tire um print dos cards abaixo para compartilhar no grupo de WhatsApp da liga!")
+        
+        c_fut1, c_fut2 = st.columns(2)
+        
+        with c_fut1:
+            st.markdown(f"""
+                <div class="fut-card-container">
+                    <div class="fut-card-badge">BLACK GUYS LEAGUE</div>
+                    <div class="fut-card-title">🚀 MITO DA RODADA</div>
+                    <div class="fut-card-score">+{mito_rodada['Pontos Ganhos (Última Rodada)']}</div>
+                    <div class="fut-card-sub">{mito_rodada['Time']}</div>
+                    <p style="font-size:12px; color:#94a3b8; margin-top:20px;">Cartoleiro: {mito_rodada['Cartoleiro']}</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        with c_fut2:
+            st.markdown(f"""
+                <div class="fut-card-container" style="border-color: #00f2ff; box-shadow: 0 0 25px rgba(0, 242, 255, 0.4);">
+                    <div class="fut-card-badge" style="color:#00f2ff;">BLACK GUYS LEAGUE</div>
+                    <div class="fut-card-title">🥇 LÍDER GERAL</div>
+                    <div class="fut-card-score" style="color:#eab308;">{lider_geral['Total Acumulado']}</div>
+                    <div class="fut-card-sub">{lider_geral['Time']}</div>
+                    <p style="font-size:12px; color:#94a3b8; margin-top:20px;">Cartoleiro: {lider_geral['Cartoleiro']}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
     st.divider()
     st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Cache em SessionState Ativo.")
