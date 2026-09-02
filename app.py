@@ -278,14 +278,6 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
-    .card-mala-cheia {
-        background: rgba(239, 68, 68, 0.15);
-        border: 2px solid #ef4444;
-        border-radius: 12px;
-        padding: 14px;
-        margin-top: 10px;
-    }
-
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         margin: 15px 0 !important;
@@ -841,20 +833,63 @@ if not df.empty:
             use_container_width=True, hide_index=True
         )
 
-    # --- TAB 6: SCOUT LAB (COM MONTADOR DE TIME & RADAR) ---
+    # --- TAB 6: SCOUT LAB (COM BUSCA DE JOGADOR E AUTOCOMPLETE) ---
     with tab6:
         st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
-        st.caption("Monte seu esquadrão ideal com base no seu orçamento atual, formação tática e acompanhe os desfalques do mercado.")
+        st.caption("Monte seu esquadrão ideal, consulte métricas e pesquise por qualquer jogador para checar o status.")
         
         df_scout_full, r_num = carregar_dados_completos_scout()
 
         if not df_scout_full.empty:
-            # RADAR DE DESFALQUES E DÚVIDAS
-            df_duvidas = df_scout_full[df_scout_full["status_id"].isin([2, 6])]
+            # PESQUISA DILIGENTE COM AUTOCOMPLETE DE JOGADORES (DESFALQUES/DÚVIDAS/GERAL)
+            st.markdown("### 🔍 Consulta Rápida de Status de Jogadores")
+            
+            # Criamos uma lista formatada para a busca contendo 'Jogador (Time - Posição)'
+            df_scout_full["nome_busca"] = df_scout_full["jogador"] + " (" + df_scout_full["time"] + " - " + df_scout_full["posicao"] + ")"
+            lista_jogadores_busca = sorted(df_scout_full["nome_busca"].tolist())
+            
+            jogador_pesquisado_str = st.selectbox(
+                "Digite o nome do jogador para consultar o status atual no Cartola:",
+                options=[""] + lista_jogadores_busca,
+                index=0,
+                placeholder="Ex: Arrascaeta, Pedro, Garro..."
+            )
+
+            if jogador_pesquisado_str:
+                atleta_info = df_scout_full[df_scout_full["nome_busca"] == jogador_pesquisado_str].iloc[0]
+                
+                status_atleta = atleta_info["status"]
+                
+                if atleta_info["status_id"] == 7:
+                    cor_status = "#22c55e"
+                    icone_status = "✅"
+                elif atleta_info["status_id"] == 2:
+                    cor_status = "#f97316"
+                    icone_status = "⚠️"
+                else:
+                    cor_status = "#ef4444"
+                    icone_status = "❌"
+
+                st.markdown(f"""
+                    <div style="background: rgba(18, 12, 38, 0.9); border: 2px solid {cor_status}; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: #ffffff;">{icone_status} {atleta_info['jogador']} <span style="font-size:14px; color:#c084fc;">({atleta_info['time']} - {atleta_info['posicao']})</span></h4>
+                        <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
+                            <div>Status: <strong style="color: {cor_status};">{status_atleta}</strong></div>
+                            <div>Preço: <strong>C$ {atleta_info['preco']:.2f}</strong></div>
+                            <div>Média: <strong>{atleta_info['media']:.2f} pts</strong></div>
+                            <div>Mínimo p/ Valorizar: <strong>{atleta_info['min_valorizar']:.2f} pts</strong></div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
+
+            # RADAR GERAL DE DESFALQUES E DÚVIDAS
+            df_duvidas = df_scout_full[df_scout_full["status_id"].isin([2, 6, 5])]
             if not df_duvidas.empty:
-                st.warning(f"⚠️ **Radar de Alerta:** Existem **{len(df_duvidas)}** jogadores marcados como 'Em Dúvida' ou 'Nulo' no mercado nesta rodada!")
-                with st.expander("🔍 Ver Lista de Desfalques / Dúvidas"):
-                    st.dataframe(df_duvidas[["jogador", "time", "posicao", "status"]], use_container_width=True, hide_index=True)
+                st.warning(f"⚠️ **Radar Geral:** Existem **{len(df_duvidas)}** atletas registrados como 'Em Dúvida', 'Nulo' ou 'Contundido' nesta rodada!")
+                with st.expander("🔍 Ver Tabela Completa de Desfalques e Dúvidas"):
+                    st.dataframe(df_duvidas[["jogador", "time", "posicao", "preco", "status"]], use_container_width=True, hide_index=True)
 
             col_scout_left, col_scout_right = st.columns([1, 2])
 
