@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import plotly.express as px
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS CYBERPUNK
+# 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS HYPER-CYBERPUNK
 # ==========================================
 st.set_page_config(
     page_title="Black Guys League - Cartola FC",
@@ -30,195 +30,208 @@ URL_BASE64_LOGO = carregar_logo_base64()
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Teko:wght@600&family=Rajdhani:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@600;700&display=swap');
 
     .stApp {
-        background: radial-gradient(circle at top center, #1e0b36 0%, #0a0813 60%, #030206 100%);
-        color: #f1f5f9;
+        background: radial-gradient(circle at 50% -20%, #1a0933 0%, #080612 50%, #020105 100%);
+        color: #f8fafc;
         font-family: 'Rajdhani', sans-serif;
     }
 
     .header-main-flex {
         display: flex;
         align-items: center;
-        gap: 20px;
-        margin-bottom: 10px;
+        gap: 25px;
+        margin-bottom: 15px;
+        background: rgba(15, 12, 29, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 242, 255, 0.2);
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
 
     .header-logo-img {
-        width: 130px;
+        width: 140px;
         height: auto;
         object-fit: contain;
+        filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5));
     }
 
     h1 {
-        font-family: 'Teko', sans-serif !important;
-        font-size: 52px !important;
+        font-family: 'Orbitron', sans-serif !important;
+        font-size: 48px !important;
         text-transform: uppercase;
-        background: linear-gradient(90deg, #00f2ff 0%, #a855f7 100%);
+        background: linear-gradient(90deg, #00f2ff 0%, #7c3aed 50%, #f43f5e 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         letter-spacing: 2px;
         margin-bottom: 0px !important;
-        line-height: 1 !important;
+        line-height: 1.1 !important;
     }
 
     h2, h3 {
-        font-family: 'Rajdhani', sans-serif !important;
+        font-family: 'Orbitron', sans-serif !important;
         color: #00f2ff !important;
-        text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+        text-shadow: 0 0 12px rgba(0, 242, 255, 0.5);
         font-weight: 700;
+        letter-spacing: 1px;
     }
 
     .header-title-container {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 15px;
         flex-wrap: wrap;
     }
 
     .market-timer-inline-open {
-        background: #ccff00;
-        color: #0a0813;
-        font-family: 'Teko', sans-serif;
-        font-size: 20px;
-        font-weight: bold;
+        background: linear-gradient(135deg, #a3e635 0%, #65a30d 100%);
+        color: #020617;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 15px;
+        font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 4px 12px;
-        border-radius: 8px;
-        box-shadow: 0 0 12px rgba(204, 255, 0, 0.5);
+        padding: 6px 14px;
+        border-radius: 30px;
+        box-shadow: 0 0 15px rgba(163, 230, 53, 0.6);
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        white-space: nowrap;
+        gap: 8px;
     }
 
     .market-timer-inline-alert {
-        background: #f97316;
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
         color: #ffffff;
-        font-family: 'Teko', sans-serif;
-        font-size: 20px;
-        font-weight: bold;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 15px;
+        font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 4px 12px;
-        border-radius: 8px;
-        box-shadow: 0 0 12px rgba(249, 115, 22, 0.7);
+        padding: 6px 14px;
+        border-radius: 30px;
+        box-shadow: 0 0 18px rgba(249, 115, 22, 0.8);
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-        animation: pulse 1.5s infinite;
+        gap: 8px;
     }
 
     .market-timer-inline-closed {
-        background: #ef4444;
+        background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
         color: #ffffff;
-        font-family: 'Teko', sans-serif;
-        font-size: 20px;
-        font-weight: bold;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 15px;
+        font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 4px 12px;
-        border-radius: 8px;
-        box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+        padding: 6px 14px;
+        border-radius: 30px;
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        white-space: nowrap;
+        gap: 8px;
     }
 
     .subtitle-header {
         color: #c084fc;
         font-weight: 700;
-        margin-top: 4px;
-        margin-bottom: 6px;
+        margin-top: 6px;
+        margin-bottom: 8px;
         font-size: 15px;
+        letter-spacing: 1px;
     }
 
     .link-liga {
         display: inline-block;
         color: #00f2ff !important;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 13px;
         text-decoration: none;
         letter-spacing: 1px;
-        padding: 6px 14px;
-        background: rgba(0, 242, 255, 0.08);
-        border: 1px solid rgba(0, 242, 255, 0.4);
-        border-radius: 6px;
+        padding: 8px 16px;
+        background: rgba(0, 242, 255, 0.05);
+        border: 1px solid rgba(0, 242, 255, 0.3);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .link-liga:hover {
+        background: rgba(0, 242, 255, 0.2);
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
     }
 
     .matches-panel-container {
         width: 100%;
-        background: rgba(10, 8, 19, 0.85);
-        border: 1px solid rgba(0, 242, 255, 0.3);
-        border-radius: 12px;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
-        padding: 12px 16px;
-        margin-bottom: 20px;
+        background: rgba(10, 8, 22, 0.75);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(124, 58, 237, 0.3);
+        border-radius: 16px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        padding: 14px 18px;
+        margin-bottom: 22px;
     }
 
     .matches-panel-header {
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 16px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 15px;
         font-weight: 700;
         color: #00f2ff;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 10px;
+        letter-spacing: 1.5px;
+        margin-bottom: 12px;
     }
 
     .matches-grid {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         overflow-x: auto;
-        padding-bottom: 8px;
+        padding-bottom: 10px;
     }
 
     .match-card {
         flex: 0 0 auto;
-        background: rgba(18, 12, 38, 0.8);
-        border: 1px solid rgba(168, 85, 247, 0.3);
-        border-radius: 8px;
-        padding: 8px 12px;
+        background: rgba(21, 16, 43, 0.8);
+        border: 1px solid rgba(0, 242, 255, 0.2);
+        border-radius: 12px;
+        padding: 10px 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
-        min-width: 150px;
+        gap: 12px;
+        min-width: 160px;
+        transition: transform 0.2s ease;
+    }
+    .match-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(0, 242, 255, 0.6);
     }
 
     .match-card img {
-        width: 36px !important;
-        height: 36px !important;
+        width: 38px !important;
+        height: 38px !important;
         object-fit: contain !important;
     }
 
     .match-score {
-        font-family: 'Teko', sans-serif;
+        font-family: 'Orbitron', sans-serif;
         font-size: 20px;
-        font-weight: bold;
+        font-weight: 900;
         color: #ffffff;
     }
 
     .box-m1 {
-        background: rgba(10, 8, 19, 0.85);
-        border-radius: 12px;
-        padding: 16px;
-        border-left: 5px solid #00f2ff;
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
-        margin-bottom: 10px;
+        background: rgba(13, 10, 28, 0.85);
+        border-radius: 16px;
+        padding: 18px;
+        border-left: 6px solid #00f2ff;
+        box-shadow: 0 4px 20px rgba(0, 242, 255, 0.15);
+        margin-bottom: 12px;
     }
 
     .box-m2 {
-        background: rgba(10, 8, 19, 0.85);
-        border-radius: 12px;
-        padding: 16px;
-        border-left: 5px solid #22c55e;
-        box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
-        margin-bottom: 10px;
+        background: rgba(13, 10, 28, 0.85);
+        border-radius: 16px;
+        padding: 18px;
+        border-left: 6px solid #10b981;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+        margin-bottom: 12px;
     }
 
     .lbl-title {
@@ -226,61 +239,62 @@ st.markdown("""
         font-weight: bold;
         color: #94a3b8;
         text-transform: uppercase;
+        letter-spacing: 1px;
     }
 
     .val-num {
-        font-family: 'Teko', sans-serif;
-        font-size: 42px;
-        font-weight: bold;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 44px;
+        font-weight: 900;
         color: #ffffff;
         line-height: 1;
-        margin-right: 8px;
+        margin-right: 10px;
     }
 
-    .txt-up { color: #22c55e !important; font-size: 22px; font-weight: bold; }
-    .txt-down { color: #ef4444 !important; font-size: 22px; font-weight: bold; }
+    .txt-up { color: #10b981 !important; font-size: 22px; font-weight: bold; }
+    .txt-down { color: #f43f5e !important; font-size: 22px; font-weight: bold; }
 
     div[data-testid="stMetric"] {
-        background: rgba(18, 12, 38, 0.75);
-        border: 2px solid #a855f7;
-        box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
-        padding: 12px 16px;
-        border-radius: 12px;
+        background: rgba(21, 16, 43, 0.7);
+        border: 1px solid rgba(124, 58, 237, 0.4);
+        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2);
+        padding: 14px 18px;
+        border-radius: 14px;
     }
 
     button[data-baseweb="tab"] {
-        background-color: rgba(15, 23, 42, 0.6) !important;
+        background-color: rgba(15, 12, 29, 0.5) !important;
         color: #94a3b8 !important;
         font-size: 16px !important;
         font-family: 'Rajdhani', sans-serif !important;
         font-weight: 700 !important;
-        border-radius: 8px 8px 0px 0px;
-        padding: 8px 14px !important;
+        border-radius: 10px 10px 0px 0px;
+        padding: 10px 18px !important;
     }
 
     button[aria-selected="true"] {
-        background: linear-gradient(180deg, rgba(168, 85, 247, 0.3) 0%, rgba(0, 242, 255, 0.1) 100%) !important;
+        background: linear-gradient(180deg, rgba(124, 58, 237, 0.3) 0%, rgba(0, 242, 255, 0.08) 100%) !important;
         color: #00f2ff !important;
         border-bottom: 3px solid #00f2ff !important;
     }
 
     div[data-testid="stDataFrame"] {
-        border: 1px solid #a855f7;
-        border-radius: 12px;
+        border: 1px solid rgba(124, 58, 237, 0.4);
+        border-radius: 14px;
         overflow: hidden;
     }
 
     .card-scout-player {
-        background: rgba(10, 8, 19, 0.85);
+        background: rgba(13, 10, 28, 0.85);
         border: 1px solid rgba(0, 242, 255, 0.3);
-        border-radius: 8px;
-        padding: 10px;
-        margin-bottom: 8px;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
     }
 
     hr {
-        border-color: rgba(0, 242, 255, 0.3) !important;
-        margin: 15px 0 !important;
+        border-color: rgba(0, 242, 255, 0.2) !important;
+        margin: 18px 0 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -734,6 +748,33 @@ if not df.empty:
             )
 
         st.divider()
+
+        # NOVO MÓDULO VISUAL: HOT STREAK / SEQUÊNCIA DA LIGA
+        st.markdown("### 🔥 Destaque de Sequência e Disparada")
+        c_hot1, c_hot2 = st.columns(2)
+        
+        df_subida = df.sort_values(by="Pontos Rodada Anterior", ascending=False)
+        maior_subida = df_subida.iloc[0] if not df_subida.empty else df.iloc[0]
+        
+        with c_hot1:
+            st.markdown(f"""
+                <div style="background: rgba(124, 58, 237, 0.15); border: 1px solid #7c3aed; border-radius: 12px; padding: 14px;">
+                    <h5 style="color: #c084fc; margin:0;">🚀 MAIOR EVOLUÇÃO RECENTE</h5>
+                    <h3 style="color: #ffffff; margin-top:5px;">{maior_subida['Time']}</h3>
+                    <p style="margin:0; font-size:13px; color:#94a3b8;">Consistência mantida com <strong>{maior_subida['Pontos Rodada Anterior']} pts</strong> na rodada anterior.</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        with c_hot2:
+            st.markdown(f"""
+                <div style="background: rgba(0, 242, 255, 0.15); border: 1px solid #00f2ff; border-radius: 12px; padding: 14px;">
+                    <h5 style="color: #00f2ff; margin:0;">💰 MAIOR PATRIMÔNIO DA LIGA</h5>
+                    <h3 style="color: #ffffff; margin-top:5px;">{df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]['Time']}</h3>
+                    <p style="margin:0; font-size:13px; color:#94a3b8;">Cofre cheio com <strong>C$ {df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]['Patrimônio (C$)']}</strong> acumulados.</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+        st.divider()
         st.markdown("### 📊 Comparativo da Liga (Top Pontuadores)")
         fig_bar = px.bar(
             df.head(10), 
@@ -841,10 +882,8 @@ if not df.empty:
         df_scout_full, r_num = carregar_dados_completos_scout()
 
         if not df_scout_full.empty:
-            # PESQUISA DILIGENTE COM AUTOCOMPLETE DE JOGADORES (DESFALQUES/DÚVIDAS/GERAL)
             st.markdown("### 🔍 Consulta Rápida de Status de Jogadores")
             
-            # Criamos uma lista formatada para a busca contendo 'Jogador (Time - Posição)'
             df_scout_full["nome_busca"] = df_scout_full["jogador"] + " (" + df_scout_full["time"] + " - " + df_scout_full["posicao"] + ")"
             lista_jogadores_busca = sorted(df_scout_full["nome_busca"].tolist())
             
@@ -871,7 +910,7 @@ if not df.empty:
                     icone_status = "❌"
 
                 st.markdown(f"""
-                    <div style="background: rgba(18, 12, 38, 0.9); border: 2px solid {cor_status}; border-radius: 10px; padding: 14px; margin-bottom: 15px;">
+                    <div style="background: rgba(18, 12, 38, 0.9); border: 2px solid {cor_status}; border-radius: 12px; padding: 16px; margin-bottom: 15px; backdrop-filter: blur(8px);">
                         <h4 style="margin: 0; color: #ffffff;">{icone_status} {atleta_info['jogador']} <span style="font-size:14px; color:#c084fc;">({atleta_info['time']} - {atleta_info['posicao']})</span></h4>
                         <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
                             <div>Status: <strong style="color: {cor_status};">{status_atleta}</strong></div>
@@ -884,7 +923,6 @@ if not df.empty:
 
             st.divider()
 
-            # RADAR GERAL DE DESFALQUES E DÚVIDAS
             df_duvidas = df_scout_full[df_scout_full["status_id"].isin([2, 6, 5])]
             if not df_duvidas.empty:
                 st.warning(f"⚠️ **Radar Geral:** Existem **{len(df_duvidas)}** atletas registrados como 'Em Dúvida', 'Nulo' ou 'Contundido' nesta rodada!")
