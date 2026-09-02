@@ -1007,7 +1007,12 @@ if not df.empty:
             c_tit, c_cap = st.columns([2, 1])
 
             with c_tit:
-                st.markdown(f"### 🛡️ Esquadrão Sugerido ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}")
+                st.markdown(
+                        f'<h4 style="font-size: 18px; white-space: nowrap; margin-bottom: 12px; color: #00f2ff;">'
+                        f'🛡️ Esquadrão Sugerido ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}'
+                        f'</h4>',
+                        unsafe_allow_html=True
+                )
                 if not df_titulares.empty:
                     st.dataframe(
                         df_titulares[["posicao", "jogador", "time", "preco", "min_valorizar", "projecao", "status"]],
