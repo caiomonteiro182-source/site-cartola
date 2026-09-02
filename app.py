@@ -329,13 +329,13 @@ def processar_dados_time(args):
 
     if time_id:
         try:
-            res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
+            res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=2.5)
             if res_p.status_code == 200:
                 patrimonio = float(res_p.json().get("patrimonio", 100.0))
 
             soma_historico_rodadas = 0.0
             for r in range(1, rodada_ultima_consolidada + 1):
-                res_r = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{r}", timeout=3)
+                res_r = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{r}", timeout=2.5)
                 if res_r.status_code == 200:
                     pts_r = float(res_r.json().get("pontos", 0.0))
                     soma_historico_rodadas += pts_r
@@ -442,7 +442,8 @@ def carregar_dados_liga():
 
     tasks = [(row, rodada_ultima_consolidada, rodada_penultima, status_mercado, atletas_ao_vivo) for _, row in df_base.iterrows()]
     
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # Aumentado para 20 threads em paralelo para máxima velocidade nas chamadas de API
+    with ThreadPoolExecutor(max_workers=20) as executor:
         lista_times = list(executor.map(processar_dados_time, tasks))
 
     df = pd.DataFrame(lista_times)
@@ -607,9 +608,24 @@ def carregar_dados_completos_scout():
         return pd.DataFrame(), 1
 
 # ==========================================
-# 4. CARREGAMENTO DAS VARIÁVEIS
+# 4. CARREGAMENTO RÁPIDO VIA SESSION STATE (MEMÓRIA ULTRA-RÁPIDA)
 # ==========================================
-df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
+btn_recarregar = False
+
+# Garante o carregamento dos dados na sessão sem re-download a cada clique
+if "df_liga_cached" not in st.session_state:
+    with st.spinner("⚡ Sincronizando dados da liga em alta velocidade..."):
+        df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
+        st.session_state["df_liga_cached"] = df
+        st.session_state["rodada_atual_cached"] = rodada_atual
+        st.session_state["status_mercado_cached"] = status_mercado
+        st.session_state["info_fechamento_cached"] = info_fechamento
+
+df = st.session_state["df_liga_cached"]
+rodada_atual = st.session_state["rodada_atual_cached"]
+status_mercado = st.session_state["status_mercado_cached"]
+info_fechamento = st.session_state["info_fechamento_cached"]
+
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
@@ -662,11 +678,13 @@ with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados via ThreadPool com a API Oficial.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados armazenados em cache local ultra-rápido.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 FORÇAR RECARGA / ATUALIZAR", use_container_width=True):
         st.cache_data.clear()
+        if "df_liga_cached" in st.session_state:
+            del st.session_state["df_liga_cached"]
         st.rerun()
 
 # ==========================================
@@ -712,7 +730,7 @@ if not df.empty:
     st.write("")
 
     # ==========================================
-    # 7. ABAS PRINCIPAIS + MODO X1 E ZUEIRA
+    # 7. ABAS PRINCIPAIS
     # ==========================================
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🏆 Classificação Geral", 
@@ -749,7 +767,6 @@ if not df.empty:
 
         st.divider()
 
-        # NOVO MÓDULO VISUAL: HOT STREAK / SEQUÊNCIA DA LIGA
         st.markdown("### 🔥 Destaque de Sequência e Disparada")
         c_hot1, c_hot2 = st.columns(2)
         
@@ -874,7 +891,7 @@ if not df.empty:
             use_container_width=True, hide_index=True
         )
 
-    # --- TAB 6: SCOUT LAB (COM BUSCA DE JOGADOR E AUTOCOMPLETE) ---
+    # --- TAB 6: SCOUT LAB (BUSCA COM AUTOCOMPLETE) ---
     with tab6:
         st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
         st.caption("Monte seu esquadrão ideal, consulte métricas e pesquise por qualquer jogador para checar o status.")
@@ -1035,4 +1052,4 @@ if not df.empty:
             )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sistema otimizado com ThreadPoolExecutor.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Cache em SessionState Ativo.")
