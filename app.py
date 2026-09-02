@@ -94,6 +94,24 @@ st.markdown("""
         white-space: nowrap;
     }
 
+    .market-timer-inline-alert {
+        background: #f97316;
+        color: #ffffff;
+        font-family: 'Teko', sans-serif;
+        font-size: 20px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 4px 12px;
+        border-radius: 8px;
+        box-shadow: 0 0 12px rgba(249, 115, 22, 0.7);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        animation: pulse 1.5s infinite;
+    }
+
     .market-timer-inline-closed {
         background: #ef4444;
         color: #ffffff;
@@ -260,6 +278,14 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
+    .card-mala-cheia {
+        background: rgba(239, 68, 68, 0.15);
+        border: 2px solid #ef4444;
+        border-radius: 12px;
+        padding: 14px;
+        margin-top: 10px;
+    }
+
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         margin: 15px 0 !important;
@@ -273,7 +299,7 @@ HEADERS = {
 }
 
 # ==========================================
-# 2. SISTEMA DA BLACK GUYS LEAGUE (PARALELISMO OTIMIZADO)
+# 2. SISTEMA DA BLACK GUYS LEAGUE
 # ==========================================
 def processar_dados_time(args):
     row, rodada_ultima_consolidada, rodada_penultima, status_mercado, atletas_ao_vivo = args
@@ -437,7 +463,7 @@ def carregar_dados_liga():
             if r["Patrimônio (C$)"] == max_patr:
                 b_list.append("💰 Rico")
             if r["Total Acumulado"] == min_tot and len(df) > 1:
-                b_list.append("📉 Lanterna")
+                b_list.append("📉 Mala Cheia")
             badges.append(" ".join(b_list) if b_list else "—")
         
         df["Conquistas"] = badges
@@ -469,10 +495,10 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
 
         if total_horas > 0:
             texto_tempo = f"MERCADO FECHA EM {total_horas}H {minutos:02d}MIN"
+            return f'<span class="market-timer-inline-open">⏱️ {texto_tempo}</span>'
         else:
-            texto_tempo = f"MERCADO FECHA EM {minutos} MIN!"
-
-        return f'<span class="market-timer-inline-open">⏱️ {texto_tempo}</span>'
+            texto_tempo = f"ATENÇÃO: MERCADO FECHA EM {minutos} MIN!"
+            return f'<span class="market-timer-inline-alert">⚠️ {texto_tempo}</span>'
     except Exception:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
 
@@ -525,7 +551,7 @@ def carregar_base_vencedores():
     return None
 
 # ==========================================
-# 3. SCOUT LAB COM MÍNIMO PARA VALORIZAR
+# 3. SCOUT LAB COM MÍNIMO PARA VALORIZAR & DESFALQUES
 # ==========================================
 @st.cache_data(ttl=300)
 def carregar_dados_completos_scout():
@@ -554,6 +580,8 @@ def carregar_dados_completos_scout():
             projecao = media * 1.15 if status_id == 7 else media * 0.85
             score = (projecao * 0.60) + ((projecao / max(0.1, preco)) * 4.0)
 
+            status_str = "Confirmado" if status_id == 7 else ("Em dúvida" if status_id == 2 else ("Nulo/Outro" if status_id == 6 else "Fora"))
+
             lista_final.append({
                 "atleta_id": a.get("atleta_id"),
                 "jogador": a.get("apelido", "Atleta"),
@@ -565,7 +593,7 @@ def carregar_dados_completos_scout():
                 "projecao": round(projecao, 2),
                 "score": round(score, 2),
                 "status_id": status_id,
-                "status": "Confirmado" if status_id == 7 else ("Em dúvida" if status_id == 2 else "Outro")
+                "status": status_str
             })
             
         return pd.DataFrame(lista_final), status.get("rodada_atual", 1)
@@ -668,19 +696,22 @@ if not df.empty:
 
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).iloc[0]
+    pior_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=True).iloc[0]
 
-    k1, k2 = st.columns(2)
+    k1, k2, k3 = st.columns(3)
     k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total Acumulado']} pts")
     k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
+    k3.metric("📉 MALA CHEIA DA RODADA", f"{pior_rodada['Time']}", f"{pior_rodada['Pontos Ganhos (Última Rodada)']} pts")
 
     st.write("")
 
     # ==========================================
-    # 7. ABAS PRINCIPAIS + MODO X1
+    # 7. ABAS PRINCIPAIS + MODO X1 E ZUEIRA
     # ==========================================
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🏆 Classificação Geral", 
         "⚔️ Confronto Direto (X1)", 
+        "📱 Resumo WhatsApp",
         "🥇 Campeões do Mês", 
         "💰 Guia de Valorização", 
         "🤖 Cartola Scout Lab"
@@ -768,16 +799,36 @@ if not df.empty:
                 st.metric("Pontos na Rodada", f"{d2['Pontos Ganhos (Última Rodada)']} pts")
                 st.metric("Patrimônio", f"C$ {d2['Patrimônio (C$)']}")
 
-    # --- TAB 3: CAMPEÕES DO MÊS ---
+    # --- TAB 3: RESUMO WHATSAPP ---
     with tab3:
+        st.subheader("📱 Gerador de Resumo para WhatsApp")
+        st.caption("Copie o texto formatado abaixo para enviar no grupo da liga ao final da rodada!")
+        
+        texto_wa = f"""*🚨 RESUMO BLACK GUYS LEAGUE - RODADA {rodada_atual} 🚨*
+
+🥇 *LÍDER GERAL:* {lider_geral['Time']} ({lider_geral['Total Acumulado']} pts)
+🚀 *MITO DA RODADA:* {mito_rodada['Time']} (+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts)
+📉 *MALA CHEIA:* {pior_rodada['Time']} ({pior_rodada['Pontos Ganhos (Última Rodada)']} pts)
+
+*TOP 5 DA LIGA:*
+"""
+        for i, row in df.head(5).iterrows():
+            texto_wa += f"{row['Posição Geral']}º {row['Time']} - {row['Total Acumulado']} pts\n"
+
+        texto_wa += f"\n👉 Acesse o painel completo para ver mais estatísticas!"
+        
+        st.code(texto_wa, language="markdown")
+
+    # --- TAB 4: CAMPEÕES DO MÊS ---
+    with tab4:
         st.subheader("👑 Galeria de Campeões Mensais")
         if df_vencedores is not None and not df_vencedores.empty:
             st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
         else:
             st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
 
-    # --- TAB 4: GUIA DE VALORIZAÇÃO ---
-    with tab4:
+    # --- TAB 5: GUIA DE VALORIZAÇÃO ---
+    with tab5:
         st.subheader("💰 Painel de Patrimônio & Valorização Ao Vivo")
         df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
         df_val["Rank Valorização"] = df_val.index + 1
@@ -790,14 +841,21 @@ if not df.empty:
             use_container_width=True, hide_index=True
         )
 
-    # --- TAB 5: SCOUT LAB (COM MONTADOR DE TIME) ---
-    with tab5:
+    # --- TAB 6: SCOUT LAB (COM MONTADOR DE TIME & RADAR) ---
+    with tab6:
         st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
-        st.caption("Monte seu esquadrão ideal com base no seu orçamento atual, formação tática e métricas de desempenho.")
+        st.caption("Monte seu esquadrão ideal com base no seu orçamento atual, formação tática e acompanhe os desfalques do mercado.")
         
         df_scout_full, r_num = carregar_dados_completos_scout()
 
         if not df_scout_full.empty:
+            # RADAR DE DESFALQUES E DÚVIDAS
+            df_duvidas = df_scout_full[df_scout_full["status_id"].isin([2, 6])]
+            if not df_duvidas.empty:
+                st.warning(f"⚠️ **Radar de Alerta:** Existem **{len(df_duvidas)}** jogadores marcados como 'Em Dúvida' ou 'Nulo' no mercado nesta rodada!")
+                with st.expander("🔍 Ver Lista de Desfalques / Dúvidas"):
+                    st.dataframe(df_duvidas[["jogador", "time", "posicao", "status"]], use_container_width=True, hide_index=True)
+
             col_scout_left, col_scout_right = st.columns([1, 2])
 
             with col_scout_left:
@@ -836,7 +894,7 @@ if not df.empty:
 
             if btn_montar or "squad_gerado" not in st.session_state:
                 necessidade = esquemas_dict[esquema_tatico]
-                df_filtrado_status = df_scout_full[df_scout_full["status_id"].isin([7, 2])].sort_values(by="score", ascending=False)
+                df_filtrado_status = df_scout_full[df_scout_full["status_id"] == 7].sort_values(by="score", ascending=False)
 
                 titulares = []
                 custo_atual = 0.0
