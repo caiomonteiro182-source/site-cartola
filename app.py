@@ -4,9 +4,11 @@ import requests
 import os
 import base64
 import re
-import json
-import time
 from datetime import datetime
+import timezonefinder
+from concurrent.futures import ThreadPoolExecutor
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS CYBERPUNK
@@ -252,22 +254,6 @@ st.markdown("""
         overflow: hidden;
     }
 
-    .card-vencedor {
-        background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-        border: 2px solid #eab308;
-        border-radius: 12px;
-        padding: 14px;
-        text-align: center;
-    }
-
-    .card-dica {
-        background: rgba(18, 12, 38, 0.7);
-        border: 1px solid #00f2ff;
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 10px;
-    }
-
     .card-scout-player {
         background: rgba(10, 8, 19, 0.85);
         border: 1px solid rgba(0, 242, 255, 0.3);
@@ -275,6 +261,19 @@ st.markdown("""
         padding: 10px;
         margin-bottom: 8px;
     }
+
+    .badge-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-left: 6px;
+    }
+    .badge-mito { background: #eab308; color: #000; }
+    .badge-patrimonio { background: #10b981; color: #fff; }
+    .badge-lanterna { background: #ef4444; color: #fff; }
 
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
@@ -289,8 +288,96 @@ HEADERS = {
 }
 
 # ==========================================
-# 2. SISTEMA DA BLACK GUYS LEAGUE (TABELA & HISTÓRICO)
+# 2. SISTEMA DA BLACK GUYS LEAGUE (PARALELISMO OTIMIZADO)
 # ==========================================
+def processar_dados_time(args):
+    row, rodada_ultima_consolidada, rodada_penultima, status_mercado, atletas_ao_vivo = args
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    nome_time = str(row.get("Time", "")).strip()
+    cartoleiro = str(row.get("Cartoleiro", "")).strip()
+    time_id = row.get("ID", None)
+
+    try:
+        time_id = int(time_id) if pd.notna(time_id) else None
+    except (ValueError, TypeError):
+        time_id = None
+
+    pt_rodada = 0.0
+    pt_rodada_anterior = 0.0
+    total_acumulado = 0.0
+    patrimonio = 100.0
+    valorizacao_rodada = 0.0
+
+    if time_id:
+        try:
+            res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
+            if res_p.status_code == 200:
+                patrimonio = float(res_p.json().get("patrimonio", 100.0))
+
+            soma_historico_rodadas = 0.0
+            for r in range(1, rodada_ultima_consolidada + 1):
+                res_r = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{r}", timeout=3)
+                if res_r.status_code == 200:
+                    pts_r = float(res_r.json().get("pontos", 0.0))
+                    soma_historico_rodadas += pts_r
+
+                    if r == rodada_ultima_consolidada:
+                        pt_rodada = pts_r
+                        atletas_uc = res_r.json().get("atletas", [])
+                        if atletas_uc and status_mercado == 1:
+                            valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
+
+                    if r == rodada_penultima:
+                        pt_rodada_anterior = pts_r
+
+            total_acumulado = soma_historico_rodadas
+
+            if status_mercado == 2 and atletas_ao_vivo and res_p.status_code == 200:
+                dados = res_p.json()
+                atletas_escalados = dados.get("atletas", [])
+                capitao_id = dados.get("capitao_id", None)
+
+                pontos_vivo = 0.0
+                val_vivo = 0.0
+
+                for atleta in atletas_escalados:
+                    a_id = str(atleta.get("atleta_id"))
+                    if a_id in atletas_ao_vivo:
+                        info_v = atletas_ao_vivo[a_id]
+                        p_atleta = float(info_v.get("pontuacao", 0.0))
+                        v_atleta = float(info_v.get("variacao_num", 0.0))
+
+                        if capitao_id and int(a_id) == int(capitao_id):
+                            p_atleta *= 2
+
+                        pontos_vivo += p_atleta
+                        val_vivo += v_atleta
+
+                pt_rodada = pontos_vivo
+                valorizacao_rodada = val_vivo
+                total_acumulado += pt_rodada
+
+        except Exception:
+            pass
+
+    if total_acumulado == 0.0:
+        try:
+            total_acumulado = float(row.get("Total", 0.0))
+        except Exception:
+            total_acumulado = 0.0
+
+    return {
+        "Time": nome_time,
+        "Cartoleiro": cartoleiro,
+        "Pontos Ganhos (Última Rodada)": round(pt_rodada, 2),
+        "Pontos Rodada Anterior": round(pt_rodada_anterior, 2),
+        "Total Acumulado": round(total_acumulado, 2),
+        "Patrimônio (C$)": round(patrimonio, 2),
+        "Valorização (C$)": round(valorizacao_rodada, 2)
+    }
+
 @st.cache_data(ttl=120)
 def carregar_dados_liga():
     session = requests.Session()
@@ -333,93 +420,14 @@ def carregar_dados_liga():
         except Exception:
             pass
 
-    lista_times = []
     rodada_ultima_consolidada = rodada_cartola - 1 if status_mercado == 1 else rodada_cartola
     rodada_penultima = rodada_ultima_consolidada - 1
 
-    for _, row in df_base.iterrows():
-        nome_time = str(row.get("Time", "")).strip()
-        cartoleiro = str(row.get("Cartoleiro", "")).strip()
-
-        time_id = row.get("ID", None)
-        try:
-            time_id = int(time_id) if pd.notna(time_id) else None
-        except (ValueError, TypeError):
-            time_id = None
-
-        pt_rodada = 0.0
-        pt_rodada_anterior = 0.0
-        total_acumulado = 0.0
-        patrimonio = 100.0
-        valorizacao_rodada = 0.0
-
-        if time_id:
-            try:
-                res_p = session.get(f"https://api.cartola.globo.com/time/id/{time_id}", timeout=3)
-                if res_p.status_code == 200:
-                    patrimonio = float(res_p.json().get("patrimonio", 100.0))
-
-                soma_historico_rodadas = 0.0
-                for r in range(1, rodada_ultima_consolidada + 1):
-                    res_r = session.get(f"https://api.cartola.globo.com/time/id/{time_id}/{r}", timeout=3)
-                    if res_r.status_code == 200:
-                        pts_r = float(res_r.json().get("pontos", 0.0))
-                        soma_historico_rodadas += pts_r
-                        
-                        if r == rodada_ultima_consolidada:
-                            pt_rodada = pts_r
-                            atletas_uc = res_r.json().get("atletas", [])
-                            if atletas_uc and status_mercado == 1:
-                                valorizacao_rodada = sum([float(a.get("variacao_num", 0.0)) for a in atletas_uc])
-                        
-                        if r == rodada_penultima:
-                            pt_rodada_anterior = pts_r
-
-                total_acumulado = soma_historico_rodadas
-
-                if status_mercado == 2 and atletas_ao_vivo and res_p.status_code == 200:
-                    dados = res_p.json()
-                    atletas_escalados = dados.get("atletas", [])
-                    capitao_id = dados.get("capitao_id", None)
-                    
-                    pontos_vivo = 0.0
-                    val_vivo = 0.0
-
-                    for atleta in atletas_escalados:
-                        a_id = str(atleta.get("atleta_id"))
-                        if a_id in atletas_ao_vivo:
-                            info_v = atletas_ao_vivo[a_id]
-                            p_atleta = float(info_v.get("pontuacao", 0.0))
-                            v_atleta = float(info_v.get("variacao_num", 0.0))
-
-                            if capitao_id and int(a_id) == int(capitao_id):
-                                p_atleta *= 2
-
-                            pontos_vivo += p_atleta
-                            val_vivo += v_atleta
-
-                    pt_rodada = pontos_vivo
-                    valorizacao_rodada = val_vivo
-                    total_acumulado += pt_rodada
-
-            except Exception:
-                pass
-
-        if total_acumulado == 0.0:
-            try:
-                total_acumulado = float(row.get("Total", 0.0))
-            except Exception:
-                total_acumulado = 0.0
-
-        lista_times.append({
-            "Time": nome_time,
-            "Cartoleiro": cartoleiro,
-            "Pontos Ganhos (Última Rodada)": round(pt_rodada, 2),
-            "Pontos Rodada Anterior": round(pt_rodada_anterior, 2),
-            "Total Acumulado": round(total_acumulado, 2),
-            "Patrimônio (C$)": round(patrimonio, 2),
-            "Valorização (C$)": round(valorizacao_rodada, 2)
-        })
+    tasks = [(row, rodada_ultima_consolidada, rodada_penultima, status_mercado, atletas_ao_vivo) for _, row in df_base.iterrows()]
+    
+    # Processamento em paralelo das requisições via Threads
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        lista_times = list(executor.map(processar_dados_time, tasks))
 
     df = pd.DataFrame(lista_times)
     
@@ -430,6 +438,26 @@ def carregar_dados_liga():
         top_score = df.iloc[0]["Total Acumulado"]
         df["Dif. p/ Rival"] = (df["Total Acumulado"].shift(1) - df["Total Acumulado"]).round(2).fillna(0)
         df["Dif. p/ Líder"] = (top_score - df["Total Acumulado"]).round(2)
+
+        # Atribuição de Badges
+        max_mito = df["Pontos Ganhos (Última Rodada)"].max()
+        max_patr = df["Patrimônio (C$)"].max()
+        min_tot = df["Total Acumulado"].min()
+
+        badges = []
+        for _, r in df.iterrows():
+            b_list = []
+            if r["Posição Geral"] == 1:
+                b_list.append("🥇 Líder")
+            if r["Pontos Ganhos (Última Rodada)"] == max_mito and max_mito > 0:
+                b_list.append("🚀 Mito")
+            if r["Patrimônio (C$)"] == max_patr:
+                b_list.append("💰 Rico")
+            if r["Total Acumulado"] == min_tot and len(df) > 1:
+                b_list.append("📉 Lanterna")
+            badges.append(" ".join(b_list) if b_list else "—")
+        
+        df["Conquistas"] = badges
 
     return df, rodada_cartola, status_mercado, info_fechamento
 
@@ -514,65 +542,10 @@ def carregar_base_vencedores():
     return None
 
 # ==========================================
-# 3. MÓDULO DO CARTOLA SCOUT LAB (INTEGRADO DO ANEXO)
+# 3. SCOUT LAB COM MÍNIMO PARA VALORIZAR
 # ==========================================
-def get_gatomestre_highlights():
-    url = "https://gatomestre.ge.globo.com/mais-escalados-do-cartola/"
-    try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 CartolaScoutLab/0.1"}, timeout=10)
-        if res.status_code == 200:
-            html = res.text
-            pattern = re.compile(
-                r'<div data-atletaid="(?P<id>\d+)" data-atletaficha="titulares-atleta-\d+"'
-                r'(?P<block>.*?)(?=<div data-atletaid=|<div class="banco-reservas-wrapper")',
-                re.S
-            )
-            output = []
-            for match in pattern.finditer(html):
-                block = match.group("block")
-                position = re.search(r"cartola-atletas--posicao__([a-z]+)", block)
-                count = re.search(r"GM-pontuacao-flutuante[^>]*>\s*([\d.,]+)", block)
-                name = re.search(r'class="apelido-abreviado">([^<]+)<', block)
-                if name:
-                    output.append({
-                        "atleta_id": int(match.group("id")),
-                        "apelido": name.group(1).strip(),
-                        "posicao": position.group(1).upper() if position else "",
-                        "escalacoes": count.group(1).strip() if count else "0",
-                    })
-            return output
-    except Exception:
-        pass
-    return []
-
-def get_public_odds():
-    url = "https://melhorodds.com.br/futebol/brasileirao-serie-a"
-    try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0 CartolaScoutLab/0.1"}, timeout=10)
-        if res.status_code == 200:
-            html = res.text
-            output = []
-            for block in re.findall(r"<details[^>]*>(.*?)</details>", html, re.S):
-                summary = block.split("</summary>", 1)[0]
-                teams = re.findall(r'class="dados truncate[^\"]*">([^<]+)</span>', summary)
-                if len(teams) < 2:
-                    continue
-                houses = {}
-                for row in re.findall(r"<tr>(.*?)</tr>", block, re.S):
-                    house = re.search(r'class="dados text-\[[^\"]+\][^\"]*">([^<]+)</span>', row)
-                    values = re.findall(r'class="dados block[^\"]*">([\d.,]+)</span>', row)
-                    if house and len(values) >= 3 and house.group(1).strip().lower() in {"betano", "bet365"}:
-                        houses[house.group(1).strip()] = [float(v.replace('.', '').replace(',', '.')) for v in values[:3]]
-                if houses:
-                    output.append({"home": teams[0].strip(), "away": teams[1].strip(), "houses": houses})
-            return output
-    except Exception:
-        pass
-    return []
-
 @st.cache_data(ttl=300)
 def carregar_dados_completos_scout():
-    """Consolida os dados do mercado, mais escalados do Gato Mestre e Odds."""
     try:
         res_m = requests.get("https://api.cartola.globo.com/atletas/mercado", headers=HEADERS, timeout=5)
         res_c = requests.get("https://api.cartola.globo.com/clubes", headers=HEADERS, timeout=5)
@@ -582,9 +555,6 @@ def carregar_dados_completos_scout():
         atletas = res_m.json().get("atletas", []) if res_m.status_code == 200 else []
         clubes = res_c.json() if res_c.status_code == 200 else {}
         
-        destaques = get_gatomestre_highlights()
-        odds = get_public_odds()
-
         posicoes = {1: "GOL", 2: "LAT", 3: "ZAG", 4: "MEI", 5: "ATA", 6: "TEC"}
         
         lista_final = []
@@ -597,7 +567,9 @@ def carregar_dados_completos_scout():
             preco = float(a.get("preco_num", 0.0))
             status_id = a.get("status_id")
 
-            # Cálculo do Scout Lab (Projeção e Pontuação de Ajuste)
+            # Cálculo de Mínimo para Valorizar (MPV estimado)
+            mpv = round(preco * 0.45, 2)
+
             projecao = media * 1.15 if status_id == 7 else media * 0.85
             score = (projecao * 0.60) + ((projecao / max(0.1, preco)) * 4.0)
 
@@ -608,25 +580,26 @@ def carregar_dados_completos_scout():
                 "posicao": posicoes.get(a.get("posicao_id"), "MEI"),
                 "preco": preco,
                 "media": media,
+                "min_valorizar": mpv,
                 "projecao": round(projecao, 2),
                 "score": round(score, 2),
                 "status_id": status_id,
                 "status": "Confirmado" if status_id == 7 else ("Em dúvida" if status_id == 2 else "Outro")
             })
             
-        return pd.DataFrame(lista_final), destaques, odds, status.get("rodada_atual", 1)
+        return pd.DataFrame(lista_final), status.get("rodada_atual", 1)
     except Exception:
-        return pd.DataFrame(), [], [], 1
+        return pd.DataFrame(), 1
 
 # ==========================================
-# 4. CARREGAMENTO E INICIALIZAÇÃO DAS VARIÁVEIS
+# 4. CARREGAMENTO DAS VARIÁVEIS
 # ==========================================
 df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
 df_vencedores = carregar_base_vencedores()
 lista_partidas = carregar_partidas_com_escudos(rodada_atual)
 
 # ==========================================
-# 5. RENDERIZAÇÃO DO CABEÇALHO & JOGOS
+# 5. CABEÇALHO E JOGOS
 # ==========================================
 status_tag = "🔴 JOGOS AO VIVO" if status_mercado == 2 else "🟢 PRÓXIMA RODADA"
 
@@ -674,7 +647,7 @@ with col_status:
     if status_mercado == 2:
         st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Dados sincronizados em tempo real.</h5>", unsafe_allow_html=True)
     else:
-        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados e calculados diretamente da API do Cartola FC.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados sincronizados via ThreadPool com a API Oficial.</h5>", unsafe_allow_html=True)
 
 with col_btn:
     if st.button("🔄 FORÇAR RECARGA / ATUALIZAR", use_container_width=True):
@@ -682,7 +655,7 @@ with col_btn:
         st.rerun()
 
 # ==========================================
-# 6. PAINEL DE PERFORMANCE INDIVIDUAL
+# 6. PAINEL INDIVIDUAL & METRICAS
 # ==========================================
 if not df.empty:
     st.subheader("🔍 Painel de Desempenho Individual do Time")
@@ -712,7 +685,6 @@ if not df.empty:
 
     st.divider()
 
-    # MÉTICAS SUPERIORES
     lider_geral = df.iloc[0]
     mito_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).iloc[0]
 
@@ -723,10 +695,17 @@ if not df.empty:
     st.write("")
 
     # ==========================================
-    # 7. ABAS PRINCIPAIS + SCOUT LAB
+    # 7. ABAS PRINCIPAIS + MODO X1
     # ==========================================
-    tab1, tab2, tab3, tab4 = st.tabs(["🏆 Classificação Geral", "🥇 Campeões do Mês", "💰 Guia de Valorização", "🤖 Cartola Scout Lab"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🏆 Classificação Geral", 
+        "⚔️ Confronto Direto (X1)", 
+        "🥇 Campeões do Mês", 
+        "💰 Guia de Valorização", 
+        "🤖 Cartola Scout Lab"
+    ])
 
+    # --- TAB 1: CLASSIFICAÇÃO & GRÁFICOS ---
     with tab1:
         st.subheader("⚡ Tabela de Posições e Desempenho da Liga")
         visao = st.radio("Selecione a ordem de visualização:", ["Classificação Geral (Total Acumulado)", "Ranking da Última Rodada (Pontos Ganhos)"], horizontal=True)
@@ -734,27 +713,90 @@ if not df.empty:
         
         if visao == "Classificação Geral (Total Acumulado)":
             st.dataframe(
-                df[["Posição Geral", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado", "Dif. p/ Rival", "Dif. p/ Líder"]],
-                column_config={"Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Ganho na Rodada (pts)", format="%.2f"), "Total Acumulado": st.column_config.NumberColumn("Total Geral (pts)", format="%.2f")},
+                df[["Posição Geral", "Conquistas", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado", "Dif. p/ Rival", "Dif. p/ Líder"]],
+                column_config={
+                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Ganho na Rodada (pts)", format="%.2f"), 
+                    "Total Acumulado": st.column_config.NumberColumn("Total Geral (pts)", format="%.2f")
+                },
                 use_container_width=True, hide_index=True
             )
         else:
             df_rodada = df.sort_values(by="Pontos Ganhos (Última Rodada)", ascending=False).reset_index(drop=True)
             df_rodada["Pos. Rodada"] = df_rodada.index + 1
             st.dataframe(
-                df_rodada[["Pos. Rodada", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado"]],
+                df_rodada[["Pos. Rodada", "Conquistas", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado"]],
                 column_config={"Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Pontos Ganhos (Última Rodada)", format="+%.2f")},
                 use_container_width=True, hide_index=True
             )
 
+        st.divider()
+        st.markdown("### 📊 Comparativo da Liga (Top Pontuadores)")
+        fig_bar = px.bar(
+            df.head(10), 
+            x="Time", 
+            y="Total Acumulado", 
+            color="Total Acumulado",
+            text="Total Acumulado",
+            color_continuous_scale="Purples",
+            template="plotly_dark"
+        )
+        fig_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    # --- TAB 2: CONFRONTO DIRETO (X1) ---
     with tab2:
+        st.subheader("⚔️ Desafio X1: Confronto Direto Entre Cartoleiros")
+        col_x1, col_x2 = st.columns(2)
+        
+        times_lista = df["Time"].tolist()
+        with col_x1:
+            t1 = st.selectbox("Selecione o Time 1:", times_lista, index=0)
+        with col_x2:
+            t2 = st.selectbox("Selecione o Time 2:", times_lista, index=min(1, len(times_lista)-1))
+
+        if t1 == t2:
+            st.warning("Escolha dois times diferentes para realizar o confronto X1!")
+        else:
+            d1 = df[df["Time"] == t1].iloc[0]
+            d2 = df[df["Time"] == t2].iloc[0]
+
+            st.write("")
+            c_res1, c_vs, c_res2 = st.columns([2, 1, 2])
+            
+            with c_res1:
+                st.markdown(f"<h3 style='text-align:center;'>{d1['Time']}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; color:#c084fc;'>{d1['Cartoleiro']}</p>", unsafe_allow_html=True)
+                st.metric("Total Acumulado", f"{d1['Total Acumulado']} pts")
+                st.metric("Pontos na Rodada", f"{d1['Pontos Ganhos (Última Rodada)']} pts")
+                st.metric("Patrimônio", f"C$ {d1['Patrimônio (C$)']}")
+
+            with c_vs:
+                st.markdown("<h1 style='text-align:center; margin-top:50px;'>VS</h1>", unsafe_allow_html=True)
+                diff_x1 = d1["Total Acumulado"] - d2["Total Acumulado"]
+                if diff_x1 > 0:
+                    st.success(f"**{d1['Time']}** lidera por +{diff_x1:.2f} pts!")
+                elif diff_x1 < 0:
+                    st.success(f"**{d2['Time']}** lidera por +{abs(diff_x1):.2f} pts!")
+                else:
+                    st.info("Empate absoluto no total!")
+
+            with c_res2:
+                st.markdown(f"<h3 style='text-align:center;'>{d2['Time']}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; color:#c084fc;'>{d2['Cartoleiro']}</p>", unsafe_allow_html=True)
+                st.metric("Total Acumulado", f"{d2['Total Acumulado']} pts")
+                st.metric("Pontos na Rodada", f"{d2['Pontos Ganhos (Última Rodada)']} pts")
+                st.metric("Patrimônio", f"C$ {d2['Patrimônio (C$)']}")
+
+    # --- TAB 3: CAMPEÕES DO MÊS ---
+    with tab3:
         st.subheader("👑 Galeria de Campeões Mensais")
         if df_vencedores is not None and not df_vencedores.empty:
             st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
         else:
             st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
 
-    with tab3:
+    # --- TAB 4: GUIA DE VALORIZAÇÃO ---
+    with tab4:
         st.subheader("💰 Painel de Patrimônio & Valorização Ao Vivo")
         df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
         df_val["Rank Valorização"] = df_val.index + 1
@@ -767,104 +809,22 @@ if not df.empty:
             use_container_width=True, hide_index=True
         )
 
-    with tab4:
-        st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência & Sugestão)")
-        st.caption("Um laboratório completo para comparar jogadores usando média, projeção, odds de casas de apostas e mais escalados do Gato Mestre.")
+    # --- TAB 5: SCOUT LAB ---
+    with tab5:
+        st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
+        st.caption("Comparativos usando média, projeções, score e pontuação mínima estimada para valorizar (MPV).")
         
-        df_scout_full, destaques_gm, odds_pub, r_num = carregar_dados_completos_scout()
+        df_scout_full, r_num = carregar_dados_completos_scout()
 
         if not df_scout_full.empty:
-            col_scout_left, col_scout_right = st.columns([1, 2])
-
-            with col_scout_left:
-                st.markdown("### ⚙️ Parâmetros do Esquadrão")
-                orcamento = st.number_input("Patrimônio Disponível (C$):", min_value=30.0, max_value=300.0, value=140.0, step=0.5)
-                esquema_tatico = st.selectbox("Formação Tática:", ["4-3-3", "4-4-2", "3-5-2", "3-4-3", "5-3-2", "5-4-1"])
-                filtro_posicao = st.selectbox("Filtrar Posição Tabela:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
-                
-                btn_montar = st.button("🚀 Montar Escalação Ideal", use_container_width=True)
-
-            with col_scout_right:
-                st.markdown("### 📊 Destaques & Odds Integradas")
-                s1, s2 = st.columns(2)
-                s1.metric("Jogadores Analisados", len(df_scout_full))
-                s2.metric("Mais Escalados (Gato Mestre)", len(destaques_gm))
-
-            st.divider()
-
-            # Algoritmo de montagem
-            esquemas_dict = {
-                "4-3-3": {"GOL": 1, "LAT": 2, "ZAG": 2, "MEI": 3, "ATA": 3, "TEC": 1},
-                "4-4-2": {"GOL": 1, "LAT": 2, "ZAG": 2, "MEI": 4, "ATA": 2, "TEC": 1},
-                "3-5-2": {"GOL": 1, "LAT": 0, "ZAG": 3, "MEI": 5, "ATA": 2, "TEC": 1},
-                "3-4-3": {"GOL": 1, "LAT": 0, "ZAG": 3, "MEI": 4, "ATA": 3, "TEC": 1},
-                "5-3-2": {"GOL": 1, "LAT": 2, "ZAG": 3, "MEI": 3, "ATA": 2, "TEC": 1},
-                "5-4-1": {"GOL": 1, "LAT": 2, "ZAG": 3, "MEI": 4, "ATA": 1, "TEC": 1},
-            }
-
-            if btn_montar or "squad_gerado" not in st.session_state:
-                necessidade = esquemas_dict[esquema_tatico]
-                df_filtrado_status = df_scout_full[df_scout_full["status_id"].isin([7, 2])].sort_values(by="score", ascending=False)
-
-                titulares = []
-                reservas = []
-                custo_atual = 0.0
-
-                for pos, qtd in necessidade.items():
-                    if qtd > 0:
-                        opcoes_pos = df_filtrado_status[df_filtrado_status["posicao"] == pos]
-                        for _, atleta in opcoes_pos.iterrows():
-                            if len([x for x in titulares if x["posicao"] == pos]) < qtd:
-                                if custo_atual + atleta["preco"] <= orcamento:
-                                    titulares.append(atleta)
-                                    custo_atual += atleta["preco"]
-                            elif len([x for x in reservas if x["posicao"] == pos]) < 1:
-                                reservas.append(atleta)
-
-                st.session_state["squad_gerado"] = pd.DataFrame(titulares)
-                st.session_state["reservas_gerado"] = pd.DataFrame(reservas)
-                st.session_state["custo_squad"] = custo_atual
-
-            # Exibição do Time Sugerido
-            df_titulares = st.session_state.get("squad_gerado", pd.DataFrame())
-            custo_time = st.session_state.get("custo_squad", 0.0)
-
-            c_tit, c_cap = st.columns([2, 1])
-
-            with c_tit:
-                st.markdown(f"### 🛡️ Base Sugerida ({esquema_tatico}) - Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}")
-                if not df_titulares.empty:
-                    st.dataframe(
-                        df_titulares[["posicao", "jogador", "time", "preco", "media", "projecao", "status"]],
-                        column_config={
-                            "posicao": "Posição",
-                            "jogador": "Atleta",
-                            "time": "Clube",
-                            "preco": st.column_config.NumberColumn("Custo", format="C$ %.2f"),
-                            "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts")
-                        },
-                        use_container_width=True, hide_index=True
-                    )
-
-            with c_cap:
-                st.markdown("### ⭐ Capitães Recomendados")
-                if not df_titulares.empty:
-                    capitaes = df_titulares[df_titulares["posicao"] != "TEC"].sort_values(by="projecao", ascending=False).head(3)
-                    for i, (_, cap) in enumerate(capitaes.iterrows()):
-                        st.markdown(f"""
-                            <div class="card-scout-player">
-                                <strong>{i+1}º Capitão: {cap['jogador']}</strong> ({cap['time']})<br>
-                                Posição: {cap['posicao']} | Projeção: <span style="color:#00f2ff; font-weight:bold;">{cap['projecao']} pts</span>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-            # Tabela Geral de Ranking do Scout
-            st.markdown("### 🏆 Ranking de Oportunidades do Mercado")
+            filtro_posicao = st.selectbox("Filtrar Posição na Tabela:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
+            
             df_scout_view = df_scout_full if filtro_posicao == "TODAS" else df_scout_full[df_scout_full["posicao"] == filtro_posicao]
             st.dataframe(
-                df_scout_view[["jogador", "time", "posicao", "preco", "media", "projecao", "score", "status"]],
+                df_scout_view[["jogador", "time", "posicao", "preco", "min_valorizar", "media", "projecao", "score", "status"]],
                 column_config={
                     "preco": st.column_config.NumberColumn("Preço", format="C$ %.2f"),
+                    "min_valorizar": st.column_config.NumberColumn("Mínimo p/ Valorizar", format="%.2f pts"),
                     "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts"),
                     "score": st.column_config.NumberColumn("Score de Compra", format="%.2f")
                 },
@@ -872,4 +832,4 @@ if not df.empty:
             )
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sistema integrado com Scout Lab.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Sistema otimizado com ThreadPoolExecutor.")
