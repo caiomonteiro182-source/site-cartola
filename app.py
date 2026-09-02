@@ -5,10 +5,8 @@ import os
 import base64
 import re
 from datetime import datetime
-import timezonefinder
 from concurrent.futures import ThreadPoolExecutor
 import plotly.express as px
-import plotly.graph_objects as go
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS CYBERPUNK
@@ -262,19 +260,6 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
-    .badge-tag {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin-left: 6px;
-    }
-    .badge-mito { background: #eab308; color: #000; }
-    .badge-patrimonio { background: #10b981; color: #fff; }
-    .badge-lanterna { background: #ef4444; color: #fff; }
-
     hr {
         border-color: rgba(0, 242, 255, 0.3) !important;
         margin: 15px 0 !important;
@@ -425,7 +410,6 @@ def carregar_dados_liga():
 
     tasks = [(row, rodada_ultima_consolidada, rodada_penultima, status_mercado, atletas_ao_vivo) for _, row in df_base.iterrows()]
     
-    # Processamento em paralelo das requisições via Threads
     with ThreadPoolExecutor(max_workers=10) as executor:
         lista_times = list(executor.map(processar_dados_time, tasks))
 
@@ -439,7 +423,6 @@ def carregar_dados_liga():
         df["Dif. p/ Rival"] = (df["Total Acumulado"].shift(1) - df["Total Acumulado"]).round(2).fillna(0)
         df["Dif. p/ Líder"] = (top_score - df["Total Acumulado"]).round(2)
 
-        # Atribuição de Badges
         max_mito = df["Pontos Ganhos (Última Rodada)"].max()
         max_patr = df["Patrimônio (C$)"].max()
         min_tot = df["Total Acumulado"].min()
@@ -567,9 +550,7 @@ def carregar_dados_completos_scout():
             preco = float(a.get("preco_num", 0.0))
             status_id = a.get("status_id")
 
-            # Cálculo de Mínimo para Valorizar (MPV estimado)
             mpv = round(preco * 0.45, 2)
-
             projecao = media * 1.15 if status_id == 7 else media * 0.85
             score = (projecao * 0.60) + ((projecao / max(0.1, preco)) * 4.0)
 
@@ -809,16 +790,107 @@ if not df.empty:
             use_container_width=True, hide_index=True
         )
 
-    # --- TAB 5: SCOUT LAB ---
+    # --- TAB 5: SCOUT LAB (COM MONTADOR DE TIME) ---
     with tab5:
         st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
-        st.caption("Comparativos usando média, projeções, score e pontuação mínima estimada para valorizar (MPV).")
+        st.caption("Monte seu esquadrão ideal com base no seu orçamento atual, formação tática e métricas de desempenho.")
         
         df_scout_full, r_num = carregar_dados_completos_scout()
 
         if not df_scout_full.empty:
-            filtro_posicao = st.selectbox("Filtrar Posição na Tabela:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
-            
+            col_scout_left, col_scout_right = st.columns([1, 2])
+
+            with col_scout_left:
+                st.markdown("### ⚙️ Parâmetros do Esquadrão")
+                
+                patrimonio_sugerido = float(dados_time["Patrimônio (C$)"]) if "dados_time" in locals() else 100.0
+                
+                orcamento = st.number_input(
+                    "Patrimônio Disponível (C$):", 
+                    min_value=30.0, 
+                    max_value=300.0, 
+                    value=patrimonio_sugerido, 
+                    step=0.5
+                )
+                esquema_tatico = st.selectbox("Formação Tática:", ["4-3-3", "4-4-2", "3-5-2", "3-4-3", "5-3-2", "5-4-1"])
+                filtro_posicao = st.selectbox("Filtrar Posição Tabela:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
+                
+                btn_montar = st.button("🚀 Montar Escalação Ideal", use_container_width=True)
+
+            with col_scout_right:
+                st.markdown("### 📊 Estatísticas do Mercado")
+                s1, s2 = st.columns(2)
+                s1.metric("Atletas Analisados", len(df_scout_full))
+                s2.metric("Média de Preço do Mercado", f"C$ {df_scout_full['preco'].mean():.2f}")
+
+            st.divider()
+
+            esquemas_dict = {
+                "4-3-3": {"GOL": 1, "LAT": 2, "ZAG": 2, "MEI": 3, "ATA": 3, "TEC": 1},
+                "4-4-2": {"GOL": 1, "LAT": 2, "ZAG": 2, "MEI": 4, "ATA": 2, "TEC": 1},
+                "3-5-2": {"GOL": 1, "LAT": 0, "ZAG": 3, "MEI": 5, "ATA": 2, "TEC": 1},
+                "3-4-3": {"GOL": 1, "LAT": 0, "ZAG": 3, "MEI": 4, "ATA": 3, "TEC": 1},
+                "5-3-2": {"GOL": 1, "LAT": 2, "ZAG": 3, "MEI": 3, "ATA": 2, "TEC": 1},
+                "5-4-1": {"GOL": 1, "LAT": 2, "ZAG": 3, "MEI": 4, "ATA": 1, "TEC": 1},
+            }
+
+            if btn_montar or "squad_gerado" not in st.session_state:
+                necessidade = esquemas_dict[esquema_tatico]
+                df_filtrado_status = df_scout_full[df_scout_full["status_id"].isin([7, 2])].sort_values(by="score", ascending=False)
+
+                titulares = []
+                custo_atual = 0.0
+
+                for pos, qtd in necessidade.items():
+                    if qtd > 0:
+                        opcoes_pos = df_filtrado_status[df_filtrado_status["posicao"] == pos]
+                        for _, atleta in opcoes_pos.iterrows():
+                            if len([x for x in titulares if x["posicao"] == pos]) < qtd:
+                                if custo_atual + atleta["preco"] <= orcamento:
+                                    titulares.append(atleta)
+                                    custo_atual += atleta["preco"]
+
+                st.session_state["squad_gerado"] = pd.DataFrame(titulares)
+                st.session_state["custo_squad"] = custo_atual
+
+            df_titulares = st.session_state.get("squad_gerado", pd.DataFrame())
+            custo_time = st.session_state.get("custo_squad", 0.0)
+
+            c_tit, c_cap = st.columns([2, 1])
+
+            with c_tit:
+                st.markdown(f"### 🛡️ Esquadrão Sugerido ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}")
+                if not df_titulares.empty:
+                    st.dataframe(
+                        df_titulares[["posicao", "jogador", "time", "preco", "min_valorizar", "projecao", "status"]],
+                        column_config={
+                            "posicao": "Posição",
+                            "jogador": "Atleta",
+                            "time": "Clube",
+                            "preco": st.column_config.NumberColumn("Custo", format="C$ %.2f"),
+                            "min_valorizar": st.column_config.NumberColumn("Mín. p/ Valorizar", format="%.2f pts"),
+                            "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts")
+                        },
+                        use_container_width=True, hide_index=True
+                    )
+                else:
+                    st.warning("Não foi possível montar um time completo com esse orçamento. Tente aumentar o valor disponível.")
+
+            with c_cap:
+                st.markdown("### ⭐ Sugestão de Capitães")
+                if not df_titulares.empty:
+                    capitaes = df_titulares[df_titulares["posicao"] != "TEC"].sort_values(by="projecao", ascending=False).head(3)
+                    for i, (_, cap) in enumerate(capitaes.iterrows()):
+                        st.markdown(f"""
+                            <div class="card-scout-player">
+                                <strong>{i+1}º Capitão: {cap['jogador']}</strong> ({cap['time']})<br>
+                                Posição: {cap['posicao']} | Projeção: <span style="color:#00f2ff; font-weight:bold;">{cap['projecao']} pts</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+            st.divider()
+
+            st.markdown("### 🏆 Ranking de Oportunidades do Mercado")
             df_scout_view = df_scout_full if filtro_posicao == "TODAS" else df_scout_full[df_scout_full["posicao"] == filtro_posicao]
             st.dataframe(
                 df_scout_view[["jogador", "time", "posicao", "preco", "min_valorizar", "media", "projecao", "score", "status"]],
