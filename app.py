@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import plotly.express as px
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS HYPER-CYBERPUNK
+# 1. CONFIGURAÇÃO DA PÁGINA E ESTILOS RESPONSIVOS MOBILE
 # ==========================================
 st.set_page_config(
     page_title="Black Guys League - Cartola FC",
@@ -38,10 +38,11 @@ st.markdown("""
         font-family: 'Rajdhani', sans-serif;
     }
 
+    /* CONTÊINER DO CABEÇALHO RESPONSIVO */
     .header-main-flex {
         display: flex;
         align-items: center;
-        gap: 25px;
+        gap: 20px;
         margin-bottom: 15px;
         background: rgba(15, 12, 29, 0.6);
         backdrop-filter: blur(12px);
@@ -49,25 +50,33 @@ st.markdown("""
         padding: 20px;
         border-radius: 16px;
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        flex-wrap: wrap;
     }
 
     .header-logo-img {
-        width: 140px;
+        width: 120px;
         height: auto;
         object-fit: contain;
         filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5));
     }
 
+    .header-col-wrapper {
+        flex: 1;
+        min-width: 250px;
+    }
+
     h1 {
         font-family: 'Orbitron', sans-serif !important;
-        font-size: 48px !important;
+        font-size: clamp(22px, 6vw, 44px) !important; /* Fonte fluida que reduz no celular */
         text-transform: uppercase;
         background: linear-gradient(90deg, #00f2ff 0%, #7c3aed 50%, #f43f5e 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        letter-spacing: 2px;
-        margin-bottom: 0px !important;
-        line-height: 1.1 !important;
+        letter-spacing: 1px;
+        margin-bottom: 5px !important;
+        line-height: 1.2 !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
     }
 
     h2, h3 {
@@ -81,80 +90,61 @@ st.markdown("""
     .header-title-container {
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 12px;
         flex-wrap: wrap;
+    }
+
+    .market-timer-inline-open, .market-timer-inline-alert, .market-timer-inline-closed {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border-radius: 30px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
     }
 
     .market-timer-inline-open {
         background: linear-gradient(135deg, #a3e635 0%, #65a30d 100%);
         color: #020617;
-        font-family: 'Orbitron', sans-serif;
-        font-size: 15px;
-        font-weight: 900;
-        text-transform: uppercase;
-        padding: 6px 14px;
-        border-radius: 30px;
-        box-shadow: 0 0 15px rgba(163, 230, 53, 0.6);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+        box-shadow: 0 0 12px rgba(163, 230, 53, 0.5);
     }
 
     .market-timer-inline-alert {
         background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
         color: #ffffff;
-        font-family: 'Orbitron', sans-serif;
-        font-size: 15px;
-        font-weight: 900;
-        text-transform: uppercase;
-        padding: 6px 14px;
-        border-radius: 30px;
-        box-shadow: 0 0 18px rgba(249, 115, 22, 0.8);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+        box-shadow: 0 0 15px rgba(249, 115, 22, 0.7);
     }
 
     .market-timer-inline-closed {
         background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
         color: #ffffff;
-        font-family: 'Orbitron', sans-serif;
-        font-size: 15px;
-        font-weight: 900;
-        text-transform: uppercase;
-        padding: 6px 14px;
-        border-radius: 30px;
-        box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
     }
 
     .subtitle-header {
         color: #c084fc;
         font-weight: 700;
-        margin-top: 6px;
+        margin-top: 4px;
         margin-bottom: 8px;
-        font-size: 15px;
-        letter-spacing: 1px;
+        font-size: 13px;
+        letter-spacing: 0.5px;
     }
 
     .link-liga {
         display: inline-block;
         color: #00f2ff !important;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12px;
         text-decoration: none;
-        letter-spacing: 1px;
-        padding: 8px 16px;
+        letter-spacing: 0.5px;
+        padding: 6px 12px;
         background: rgba(0, 242, 255, 0.05);
         border: 1px solid rgba(0, 242, 255, 0.3);
         border-radius: 8px;
-        transition: all 0.3s ease;
-    }
-    .link-liga:hover {
-        background: rgba(0, 242, 255, 0.2);
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
     }
 
     .matches-panel-container {
@@ -163,113 +153,96 @@ st.markdown("""
         backdrop-filter: blur(10px);
         border: 1px solid rgba(124, 58, 237, 0.3);
         border-radius: 16px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-        padding: 14px 18px;
-        margin-bottom: 22px;
+        padding: 12px 14px;
+        margin-bottom: 18px;
     }
 
     .matches-panel-header {
         font-family: 'Orbitron', sans-serif;
-        font-size: 15px;
+        font-size: 13px;
         font-weight: 700;
         color: #00f2ff;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        margin-bottom: 12px;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
     }
 
     .matches-grid {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         overflow-x: auto;
-        padding-bottom: 10px;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
     }
 
     .match-card {
         flex: 0 0 auto;
         background: rgba(21, 16, 43, 0.8);
         border: 1px solid rgba(0, 242, 255, 0.2);
-        border-radius: 12px;
-        padding: 10px 14px;
+        border-radius: 10px;
+        padding: 8px 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        min-width: 160px;
-        transition: transform 0.2s ease;
-    }
-    .match-card:hover {
-        transform: translateY(-2px);
-        border-color: rgba(0, 242, 255, 0.6);
+        gap: 10px;
+        min-width: 140px;
     }
 
     .match-card img {
-        width: 38px !important;
-        height: 38px !important;
+        width: 32px !important;
+        height: 32px !important;
         object-fit: contain !important;
     }
 
     .match-score {
         font-family: 'Orbitron', sans-serif;
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 900;
         color: #ffffff;
     }
 
-    .box-m1 {
+    .box-m1, .box-m2 {
         background: rgba(13, 10, 28, 0.85);
-        border-radius: 16px;
-        padding: 18px;
-        border-left: 6px solid #00f2ff;
-        box-shadow: 0 4px 20px rgba(0, 242, 255, 0.15);
-        margin-bottom: 12px;
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 10px;
     }
-
-    .box-m2 {
-        background: rgba(13, 10, 28, 0.85);
-        border-radius: 16px;
-        padding: 18px;
-        border-left: 6px solid #10b981;
-        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
-        margin-bottom: 12px;
-    }
+    .box-m1 { border-left: 5px solid #00f2ff; }
+    .box-m2 { border-left: 5px solid #10b981; }
 
     .lbl-title {
-        font-size: 13px;
+        font-size: 11px;
         font-weight: bold;
         color: #94a3b8;
         text-transform: uppercase;
-        letter-spacing: 1px;
     }
 
     .val-num {
         font-family: 'Orbitron', sans-serif;
-        font-size: 44px;
+        font-size: 32px;
         font-weight: 900;
         color: #ffffff;
         line-height: 1;
-        margin-right: 10px;
+        margin-right: 8px;
     }
 
-    .txt-up { color: #10b981 !important; font-size: 22px; font-weight: bold; }
-    .txt-down { color: #f43f5e !important; font-size: 22px; font-weight: bold; }
+    .txt-up { color: #10b981 !important; font-size: 18px; font-weight: bold; }
+    .txt-down { color: #f43f5e !important; font-size: 18px; font-weight: bold; }
 
     div[data-testid="stMetric"] {
         background: rgba(21, 16, 43, 0.7);
         border: 1px solid rgba(124, 58, 237, 0.4);
-        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2);
-        padding: 14px 18px;
-        border-radius: 14px;
+        padding: 10px 14px;
+        border-radius: 12px;
     }
 
     button[data-baseweb="tab"] {
         background-color: rgba(15, 12, 29, 0.5) !important;
         color: #94a3b8 !important;
-        font-size: 16px !important;
+        font-size: 14px !important;
         font-family: 'Rajdhani', sans-serif !important;
         font-weight: 700 !important;
-        border-radius: 10px 10px 0px 0px;
-        padding: 10px 18px !important;
+        padding: 8px 12px !important;
     }
 
     button[aria-selected="true"] {
@@ -278,69 +251,88 @@ st.markdown("""
         border-bottom: 3px solid #00f2ff !important;
     }
 
-    div[data-testid="stDataFrame"] {
-        border: 1px solid rgba(124, 58, 237, 0.4);
-        border-radius: 14px;
-        overflow: hidden;
+    /* REGRAS EXCLUSIVAS PARA SMARTPHONES (TELA < 768px) */
+    @media (max-width: 768px) {
+        .header-main-flex {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 15px 10px;
+            gap: 12px;
+        }
+
+        .header-logo-img {
+            width: 90px;
+        }
+
+        .header-title-container {
+            justify-content: center;
+        }
+
+        .val-num {
+            font-size: 26px;
+        }
+
+        .fut-card-container {
+            width: 100% !important;
+            max-width: 280px;
+            height: auto !important;
+            padding: 20px 10px !important;
+        }
     }
 
     .card-scout-player {
         background: rgba(13, 10, 28, 0.85);
         border: 1px solid rgba(0, 242, 255, 0.3);
         border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
     }
 
-    /* CARD ESTILO FIFA / FUT */
     .fut-card-container {
-        width: 260px;
-        height: 380px;
+        width: 250px;
         background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #030206 100%);
         border: 3px solid #eab308;
         border-radius: 18px;
-        box-shadow: 0 0 25px rgba(234, 179, 8, 0.4);
+        box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
         padding: 16px;
         text-align: center;
-        margin: 0 auto;
-        position: relative;
+        margin: 10px auto;
     }
 
     .fut-card-badge {
         font-family: 'Orbitron', sans-serif;
-        font-size: 12px;
+        font-size: 11px;
         color: #eab308;
-        letter-spacing: 2px;
-        text-transform: uppercase;
+        letter-spacing: 1.5px;
     }
 
     .fut-card-title {
         font-family: 'Orbitron', sans-serif;
-        font-size: 22px;
+        font-size: 18px;
         font-weight: 900;
         color: #ffffff;
-        margin-top: 15px;
+        margin-top: 10px;
     }
 
     .fut-card-score {
         font-family: 'Orbitron', sans-serif;
-        font-size: 52px;
+        font-size: 42px;
         font-weight: 900;
         color: #00f2ff;
         line-height: 1;
-        margin: 15px 0;
-        text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+        margin: 10px 0;
     }
 
     .fut-card-sub {
         color: #c084fc;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 13px;
     }
 
     hr {
         border-color: rgba(0, 242, 255, 0.2) !important;
-        margin: 18px 0 !important;
+        margin: 14px 0 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -546,10 +538,10 @@ def gerar_badge_mercado(info_fechamento, status_mercado):
         minutos = (total_segundos % 3600) // 60
 
         if total_horas > 0:
-            texto_tempo = f"MERCADO FECHA EM {total_horas}H {minutos:02d}MIN"
+            texto_tempo = f"FECHA EM {total_horas}H {minutos:02d}MIN"
             return f'<span class="market-timer-inline-open">⏱️ {texto_tempo}</span>'
         else:
-            texto_tempo = f"ATENÇÃO: MERCADO FECHA EM {minutos} MIN!"
+            texto_tempo = f"FECHA EM {minutos} MIN!"
             return f'<span class="market-timer-inline-alert">⚠️ {texto_tempo}</span>'
     except Exception:
         return '<span class="market-timer-inline-open">⏱️ MERCADO ABERTO</span>'
@@ -603,7 +595,7 @@ def carregar_base_vencedores():
     return None
 
 # ==========================================
-# 3. SCOUT LAB COM MÍNIMO PARA VALORIZAR & DESFALQUES
+# 3. SCOUT LAB COM MÍNIMO PARA VALORIZAR
 # ==========================================
 @st.cache_data(ttl=300)
 def carregar_dados_completos_scout():
@@ -656,7 +648,7 @@ def carregar_dados_completos_scout():
 # 4. CARREGAMENTO RÁPIDO VIA SESSION STATE
 # ==========================================
 if "df_liga_cached" not in st.session_state:
-    with st.spinner("⚡ Sincronizando dados da liga em alta velocidade..."):
+    with st.spinner("⚡ Sincronizando dados da liga..."):
         df, rodada_atual, status_mercado, info_fechamento = carregar_dados_liga()
         st.session_state["df_liga_cached"] = df
         st.session_state["rodada_atual_cached"] = rodada_atual
@@ -718,7 +710,7 @@ st.divider()
 col_status, col_btn = st.columns([3, 1])
 with col_status:
     if status_mercado == 2:
-        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Classificação AO VIVO calculada em tempo real.</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color: #ef4444; margin: 0;'>🔴 Jogos em andamento! Classificação AO VIVO calculada.</h5>", unsafe_allow_html=True)
     else:
         st.markdown("<h5 style='color: #22c55e; margin: 0;'>⚡ Dados armazenados em cache local ultra-rápido.</h5>", unsafe_allow_html=True)
 
@@ -733,7 +725,7 @@ with col_btn:
 # 6. PAINEL INDIVIDUAL & METRICAS
 # ==========================================
 if not df.empty:
-    st.subheader("🔍 Painel de Desempenho Individual do Time")
+    st.subheader("🔍 Painel Individual do Time")
     time_selecionado = st.selectbox("Selecione um time para ver a análise completa:", df["Time"].tolist())
     
     dados_time = df[df["Time"] == time_selecionado].iloc[0]
@@ -753,10 +745,10 @@ if not df.empty:
 
     c_box1, c_box2 = st.columns(2)
     with c_box1:
-        st.markdown(f'<div class="box-m1"><div class="lbl-title">⚽ ÚLTIMA PONTUAÇÃO</div><div style="display:flex; align-items:baseline; margin-top:5px;"><span class="val-num">{pt_atual:.2f}</span>{html_diff_pontos}</div><div style="margin-top:8px; font-size:13px; color:#94a3b8;">MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">{media_pontos_liga:.2f} pts</strong></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="box-m1"><div class="lbl-title">⚽ ÚLTIMA PONTUAÇÃO</div><div style="display:flex; align-items:baseline; margin-top:5px;"><span class="val-num">{pt_atual:.2f}</span>{html_diff_pontos}</div><div style="margin-top:8px; font-size:12px; color:#94a3b8;">MÉDIA DA LIGA: <strong style="color:#f1f5f9;">{media_pontos_liga:.2f} pts</strong></div></div>', unsafe_allow_html=True)
 
     with c_box2:
-        st.markdown(f'<div class="box-m2"><div class="lbl-title">💰 PATRIMÔNIO</div><div style="display:flex; align-items:baseline; margin-top:5px;"><span class="val-num">C$ {dados_time["Patrimônio (C$)"]:.2f}</span>{html_val_cartoletas}</div><div style="margin-top:8px; font-size:13px; color:#94a3b8;">MÉDIA DOS CARTOLEIROS: <strong style="color:#f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong></div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="box-m2"><div class="lbl-title">💰 PATRIMÔNIO</div><div style="display:flex; align-items:baseline; margin-top:5px;"><span class="val-num">C$ {dados_time["Patrimônio (C$)"]:.2f}</span>{html_val_cartoletas}</div><div style="margin-top:8px; font-size:12px; color:#94a3b8;">MÉDIA DA LIGA: <strong style="color:#f1f5f9;">C$ {media_patrimonio_liga:.2f}</strong></div></div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -767,41 +759,39 @@ if not df.empty:
     k1, k2, k3 = st.columns(3)
     k1.metric("🥇 LÍDER GERAL", f"{lider_geral['Time']}", f"{lider_geral['Total Acumulado']} pts")
     k2.metric("🚀 MITO DA RODADA", f"{mito_rodada['Time']}", f"+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts")
-    k3.metric("📉 MALA CHEIA DA RODADA", f"{pior_rodada['Time']}", f"{pior_rodada['Pontos Ganhos (Última Rodada)']} pts")
+    k3.metric("📉 MALA CHEIA", f"{pior_rodada['Time']}", f"{pior_rodada['Pontos Ganhos (Última Rodada)']} pts")
 
     st.write("")
 
     # ==========================================
-    # 7. ABAS PRINCIPAIS + NOVAS RECURSOS
+    # 7. ABAS PRINCIPAIS
     # ==========================================
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-        "🏆 Classificação Geral", 
-        "⚔️ Confronto Direto (X1)", 
-        "📱 Resumo WhatsApp",
-        "🥇 Campeões do Mês", 
-        "💰 Guia de Valorização", 
-        "🤖 Cartola Scout Lab",
-        "🛡️ Radar de SG",
+        "🏆 Classificação", 
+        "⚔️ X1", 
+        "📱 WhatsApp",
+        "🥇 Campeões", 
+        "💰 Valorização", 
+        "🤖 Scout Lab",
+        "🛡️ Radar SG",
         "🎴 Cards FUT"
     ])
 
     # --- TAB 1: CLASSIFICAÇÃO & GRÁFICOS ---
     with tab1:
-        st.subheader("⚡ Tabela de Posições e Desempenho da Liga")
-        
-        # IDEIA 3: SIMULADOR LIVE (SE A RODADA FECHASSE AGORA)
+        st.subheader("⚡ Tabela de Posições da Liga")
         if status_mercado == 2:
-            st.info("🎯 **MODO LIVE ATIVO:** A tabela abaixo considera os pontos em tempo real acumulados durante os jogos!")
+            st.info("🎯 **MODO LIVE ATIVO:** Tabela considerando pontos em tempo real!")
             
-        visao = st.radio("Selecione a ordem de visualização:", ["Classificação Geral (Total Acumulado)", "Ranking da Última Rodada (Pontos Ganhos)"], horizontal=True)
+        visao = st.radio("Visão:", ["Classificação Geral", "Última Rodada"], horizontal=True)
         st.write("")
         
-        if visao == "Classificação Geral (Total Acumulado)":
+        if visao == "Classificação Geral":
             st.dataframe(
                 df[["Posição Geral", "Conquistas", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado", "Dif. p/ Rival", "Dif. p/ Líder"]],
                 column_config={
-                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Ganho na Rodada (pts)", format="%.2f"), 
-                    "Total Acumulado": st.column_config.NumberColumn("Total Geral (pts)", format="%.2f")
+                    "Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Ganho (pts)", format="%.2f"), 
+                    "Total Acumulado": st.column_config.NumberColumn("Total (pts)", format="%.2f")
                 },
                 use_container_width=True, hide_index=True
             )
@@ -810,38 +800,37 @@ if not df.empty:
             df_rodada["Pos. Rodada"] = df_rodada.index + 1
             st.dataframe(
                 df_rodada[["Pos. Rodada", "Conquistas", "Time", "Cartoleiro", "Pontos Ganhos (Última Rodada)", "Total Acumulado"]],
-                column_config={"Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Pontos Ganhos (Última Rodada)", format="+%.2f")},
+                column_config={"Pontos Ganhos (Última Rodada)": st.column_config.NumberColumn("Ganho na Rodada", format="+%.2f")},
                 use_container_width=True, hide_index=True
             )
 
         st.divider()
 
-        st.markdown("### 🔥 Destaque de Sequência e Disparada")
+        st.markdown("### 🔥 Destaque de Sequência")
         c_hot1, c_hot2 = st.columns(2)
-        
         df_subida = df.sort_values(by="Pontos Rodada Anterior", ascending=False)
         maior_subida = df_subida.iloc[0] if not df_subida.empty else df.iloc[0]
         
         with c_hot1:
             st.markdown(f"""
-                <div style="background: rgba(124, 58, 237, 0.15); border: 1px solid #7c3aed; border-radius: 12px; padding: 14px;">
-                    <h5 style="color: #c084fc; margin:0;">🚀 MAIOR EVOLUÇÃO RECENTE</h5>
-                    <h3 style="color: #ffffff; margin-top:5px;">{maior_subida['Time']}</h3>
-                    <p style="margin:0; font-size:13px; color:#94a3b8;">Consistência mantida com <strong>{maior_subida['Pontos Rodada Anterior']} pts</strong> na rodada anterior.</p>
+                <div style="background: rgba(124, 58, 237, 0.15); border: 1px solid #7c3aed; border-radius: 12px; padding: 12px;">
+                    <h5 style="color: #c084fc; margin:0; font-size:12px;">🚀 MAIOR EVOLUÇÃO</h5>
+                    <h3 style="color: #ffffff; margin-top:4px; font-size:18px;">{maior_subida['Time']}</h3>
+                    <p style="margin:0; font-size:12px; color:#94a3b8;">Mantido com <strong>{maior_subida['Pontos Rodada Anterior']} pts</strong> anterior.</p>
                 </div>
             """, unsafe_allow_html=True)
             
         with c_hot2:
             st.markdown(f"""
-                <div style="background: rgba(0, 242, 255, 0.15); border: 1px solid #00f2ff; border-radius: 12px; padding: 14px;">
-                    <h5 style="color: #00f2ff; margin:0;">💰 MAIOR PATRIMÔNIO DA LIGA</h5>
-                    <h3 style="color: #ffffff; margin-top:5px;">{df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]['Time']}</h3>
-                    <p style="margin:0; font-size:13px; color:#94a3b8;">Cofre cheio com <strong>C$ {df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]['Patrimônio (C$)']}</strong> acumulados.</p>
+                <div style="background: rgba(0, 242, 255, 0.15); border: 1px solid #00f2ff; border-radius: 12px; padding: 12px;">
+                    <h5 style="color: #00f2ff; margin:0; font-size:12px;">💰 MAIOR PATRIMÔNIO</h5>
+                    <h3 style="color: #ffffff; margin-top:4px; font-size:18px;">{df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]['Time']}</h3>
+                    <p style="margin:0; font-size:12px; color:#94a3b8;">Cofre com <strong>C$ {df.sort_values(by="Patrimônio (C$)", ascending=False).iloc[0]['Patrimônio (C$)']}</strong>.</p>
                 </div>
             """, unsafe_allow_html=True)
 
         st.divider()
-        st.markdown("### 📊 Comparativo da Liga (Top Pontuadores)")
+        st.markdown("### 📊 Comparativo da Liga")
         fig_bar = px.bar(
             df.head(10), 
             x="Time", 
@@ -851,58 +840,48 @@ if not df.empty:
             color_continuous_scale="Purples",
             template="plotly_dark"
         )
-        fig_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=10, b=10))
         st.plotly_chart(fig_bar, use_container_width=True)
 
     # --- TAB 2: CONFRONTO DIRETO (X1) ---
     with tab2:
-        st.subheader("⚔️ Desafio X1: Confronto Direto Entre Cartoleiros")
+        st.subheader("⚔️ Desafio X1: Confronto Direto")
         col_x1, col_x2 = st.columns(2)
-        
         times_lista = df["Time"].tolist()
         with col_x1:
-            t1 = st.selectbox("Selecione o Time 1:", times_lista, index=0)
+            t1 = st.selectbox("Time 1:", times_lista, index=0)
         with col_x2:
-            t2 = st.selectbox("Selecione o Time 2:", times_lista, index=min(1, len(times_lista)-1))
+            t2 = st.selectbox("Time 2:", times_lista, index=min(1, len(times_lista)-1))
 
         if t1 == t2:
-            st.warning("Escolha dois times diferentes para realizar o confronto X1!")
+            st.warning("Escolha dois times diferentes!")
         else:
             d1 = df[df["Time"] == t1].iloc[0]
             d2 = df[df["Time"] == t2].iloc[0]
 
             st.write("")
             c_res1, c_vs, c_res2 = st.columns([2, 1, 2])
-            
             with c_res1:
-                st.markdown(f"<h3 style='text-align:center;'>{d1['Time']}</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align:center; color:#c084fc;'>{d1['Cartoleiro']}</p>", unsafe_allow_html=True)
-                st.metric("Total Acumulado", f"{d1['Total Acumulado']} pts")
-                st.metric("Pontos na Rodada", f"{d1['Pontos Ganhos (Última Rodada)']} pts")
+                st.markdown(f"<h4 style='text-align:center;'>{d1['Time']}</h4>", unsafe_allow_html=True)
+                st.metric("Total", f"{d1['Total Acumulado']} pts")
                 st.metric("Patrimônio", f"C$ {d1['Patrimônio (C$)']}")
 
             with c_vs:
-                st.markdown("<h1 style='text-align:center; margin-top:50px;'>VS</h1>", unsafe_allow_html=True)
+                st.markdown("<h2 style='text-align:center; margin-top:20px;'>VS</h2>", unsafe_allow_html=True)
                 diff_x1 = d1["Total Acumulado"] - d2["Total Acumulado"]
                 if diff_x1 > 0:
-                    st.success(f"**{d1['Time']}** lidera por +{diff_x1:.2f} pts!")
+                    st.success(f"**{d1['Time']}** +{diff_x1:.2f} pts!")
                 elif diff_x1 < 0:
-                    st.success(f"**{d2['Time']}** lidera por +{abs(diff_x1):.2f} pts!")
-                else:
-                    st.info("Empate absoluto no total!")
+                    st.success(f"**{d2['Time']}** +{abs(diff_x1):.2f} pts!")
 
             with c_res2:
-                st.markdown(f"<h3 style='text-align:center;'>{d2['Time']}</h3>", unsafe_allow_html=True)
-                st.markdown(f"<p style='text-align:center; color:#c084fc;'>{d2['Cartoleiro']}</p>", unsafe_allow_html=True)
-                st.metric("Total Acumulado", f"{d2['Total Acumulado']} pts")
-                st.metric("Pontos na Rodada", f"{d2['Pontos Ganhos (Última Rodada)']} pts")
+                st.markdown(f"<h4 style='text-align:center;'>{d2['Time']}</h4>", unsafe_allow_html=True)
+                st.metric("Total", f"{d2['Total Acumulado']} pts")
                 st.metric("Patrimônio", f"C$ {d2['Patrimônio (C$)']}")
 
     # --- TAB 3: RESUMO WHATSAPP ---
     with tab3:
-        st.subheader("📱 Gerador de Resumo para WhatsApp")
-        st.caption("Copie o texto formatado abaixo para enviar no grupo da liga ao final da rodada!")
-        
+        st.subheader("📱 Resumo para WhatsApp")
         texto_wa = f"""*🚨 RESUMO BLACK GUYS LEAGUE - RODADA {rodada_atual} 🚨*
 
 🥇 *LÍDER GERAL:* {lider_geral['Time']} ({lider_geral['Total Acumulado']} pts)
@@ -914,8 +893,6 @@ if not df.empty:
         for i, row in df.head(5).iterrows():
             texto_wa += f"{row['Posição Geral']}º {row['Time']} - {row['Total Acumulado']} pts\n"
 
-        texto_wa += f"\n👉 Acesse o painel completo para ver mais estatísticas!"
-        
         st.code(texto_wa, language="markdown")
 
     # --- TAB 4: CAMPEÕES DO MÊS ---
@@ -924,123 +901,84 @@ if not df.empty:
         if df_vencedores is not None and not df_vencedores.empty:
             st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
         else:
-            st.info("📌 Envie o arquivo `base_vencedores.csv` para o GitHub para exibir a galeria de campeões.")
+            st.info("📌 Arquivo `base_vencedores.csv` não encontrado.")
 
     # --- TAB 5: GUIA DE VALORIZAÇÃO ---
     with tab5:
-        st.subheader("💰 Painel de Patrimônio & Valorização Ao Vivo")
+        st.subheader("💰 Patrimônio & Valorização Ao Vivo")
         df_val = df.sort_values(by="Valorização (C$)", ascending=False).reset_index(drop=True)
         df_val["Rank Valorização"] = df_val.index + 1
         st.dataframe(
-            df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)", "Pontos Ganhos (Última Rodada)"]],
+            df_val[["Rank Valorização", "Time", "Cartoleiro", "Valorização (C$)", "Patrimônio (C$)"]],
             column_config={
-                "Valorização (C$)": st.column_config.NumberColumn("Valorização na Rodada (C$)", format="C$ %.2f"),
-                "Patrimônio (C$)": st.column_config.NumberColumn("Patrimônio Total (C$)", format="C$ %.2f")
+                "Valorização (C$)": st.column_config.NumberColumn("Valorização (C$)", format="C$ %.2f"),
+                "Patrimônio (C$)": st.column_config.NumberColumn("Patrimônio (C$)", format="C$ %.2f")
             },
             use_container_width=True, hide_index=True
         )
 
-    # --- TAB 6: SCOUT LAB (COM BUSCA E CALCULADORA DE CAPITÃO) ---
+    # --- TAB 6: SCOUT LAB (COM BUSCA E CALCULADORA) ---
     with tab6:
-        st.subheader("🤖 Cartola Scout Lab (Laboratório de Inteligência)")
-        st.caption("Monte seu esquadrão ideal, consulte métricas e pesquise por qualquer jogador para checar o status.")
-        
+        st.subheader("🤖 Cartola Scout Lab")
         df_scout_full, r_num = carregar_dados_completos_scout()
 
         if not df_scout_full.empty:
-            st.markdown("### 🔍 Consulta Rápida de Status de Jogadores")
-            
+            st.markdown("### 🔍 Consulta de Status de Atletas")
             df_scout_full["nome_busca"] = df_scout_full["jogador"] + " (" + df_scout_full["time"] + " - " + df_scout_full["posicao"] + ")"
             lista_jogadores_busca = sorted(df_scout_full["nome_busca"].tolist())
             
             jogador_pesquisado_str = st.selectbox(
-                "Digite o nome do jogador para consultar o status atual no Cartola:",
+                "Pesquisar Atleta:",
                 options=[""] + lista_jogadores_busca,
                 index=0,
-                placeholder="Ex: Arrascaeta, Pedro, Garro..."
+                placeholder="Ex: Arrascaeta, Pedro..."
             )
 
             if jogador_pesquisado_str:
                 atleta_info = df_scout_full[df_scout_full["nome_busca"] == jogador_pesquisado_str].iloc[0]
-                status_atleta = atleta_info["status"]
-                
-                if atleta_info["status_id"] == 7:
-                    cor_status = "#22c55e"
-                    icone_status = "✅"
-                elif atleta_info["status_id"] == 2:
-                    cor_status = "#f97316"
-                    icone_status = "⚠️"
-                else:
-                    cor_status = "#ef4444"
-                    icone_status = "❌"
+                cor_status = "#22c55e" if atleta_info["status_id"] == 7 else ("#f97316" if atleta_info["status_id"] == 2 else "#ef4444")
 
                 st.markdown(f"""
-                    <div style="background: rgba(18, 12, 38, 0.9); border: 2px solid {cor_status}; border-radius: 12px; padding: 16px; margin-bottom: 15px; backdrop-filter: blur(8px);">
-                        <h4 style="margin: 0; color: #ffffff;">{icone_status} {atleta_info['jogador']} <span style="font-size:14px; color:#c084fc;">({atleta_info['time']} - {atleta_info['posicao']})</span></h4>
-                        <div style="display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;">
-                            <div>Status: <strong style="color: {cor_status};">{status_atleta}</strong></div>
+                    <div style="background: rgba(18, 12, 38, 0.9); border: 2px solid {cor_status}; border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                        <h4 style="margin: 0; color: #ffffff; font-size:16px;">{atleta_info['jogador']} <span style="font-size:12px; color:#c084fc;">({atleta_info['time']})</span></h4>
+                        <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; font-size:12px;">
+                            <div>Status: <strong style="color: {cor_status};">{atleta_info['status']}</strong></div>
                             <div>Preço: <strong>C$ {atleta_info['preco']:.2f}</strong></div>
                             <div>Média: <strong>{atleta_info['media']:.2f} pts</strong></div>
-                            <div>Mínimo p/ Valorizar: <strong>{atleta_info['min_valorizar']:.2f} pts</strong></div>
+                            <div>Mínimo p/ Val: <strong>{atleta_info['min_valorizar']:.2f} pts</strong></div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
             st.divider()
 
-            df_duvidas = df_scout_full[df_scout_full["status_id"].isin([2, 6, 5])]
-            if not df_duvidas.empty:
-                st.warning(f"⚠️ **Radar Geral:** Existem **{len(df_duvidas)}** atletas registrados como 'Em Dúvida', 'Nulo' ou 'Contundido' nesta rodada!")
-                with st.expander("🔍 Ver Tabela Completa de Desfalques e Dúvidas"):
-                    st.dataframe(df_duvidas[["jogador", "time", "posicao", "preco", "status"]], use_container_width=True, hide_index=True)
-
             col_scout_left, col_scout_right = st.columns([1, 2])
 
             with col_scout_left:
-                st.markdown("### ⚙️ Parâmetros do Esquadrão")
-                
+                st.markdown("### ⚙️ Parâmetros")
                 patrimonio_sugerido = float(dados_time["Patrimônio (C$)"]) if "dados_time" in locals() else 100.0
-                
-                orcamento = st.number_input(
-                    "Patrimônio Disponível (C$):", 
-                    min_value=30.0, 
-                    max_value=300.0, 
-                    value=patrimonio_sugerido, 
-                    step=0.5
-                )
-                esquema_tatico = st.selectbox("Formação Tática:", ["4-3-3", "4-4-2", "3-5-2", "3-4-3", "5-3-2", "5-4-1"])
-                filtro_posicao = st.selectbox("Filtrar Posição Tabela:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
-                
+                orcamento = st.number_input("Patrimônio (C$):", min_value=30.0, max_value=300.0, value=patrimonio_sugerido, step=0.5)
+                esquema_tatico = st.selectbox("Formação:", ["4-3-3", "4-4-2", "3-5-2", "3-4-3", "5-3-2", "5-4-1"])
+                filtro_posicao = st.selectbox("Filtrar Posição:", ["TODAS", "GOL", "LAT", "ZAG", "MEI", "ATA", "TEC"])
                 btn_montar = st.button("🚀 Montar Escalação Ideal", use_container_width=True)
 
-            # IDEIA 1: CALCULADORA DE CAPITÃO PERFEITO NO ESPAÇO VAZIO DENTRO DE ESTATÍSTICAS DO MERCADO
             with col_scout_right:
-                st.markdown("### 📊 Estatísticas do Mercado")
+                st.markdown("### 📊 Mercado & Capitão")
                 s1, s2 = st.columns(2)
-                s1.metric("Atletas Analisados", len(df_scout_full))
-                s2.metric("Média de Preço do Mercado", f"C$ {df_scout_full['preco'].mean():.2f}")
+                s1.metric("Analisados", len(df_scout_full))
+                s2.metric("Preço Médio", f"C$ {df_scout_full['preco'].mean():.2f}")
 
                 st.write("")
-                st.markdown("### 🧮 Calculadora de Capitão Perfeito")
-                st.caption("Compare de 2 a 3 opções de capitão para ver o índice de confiança x risco de decepção.")
-                
-                cap_opcoes = st.multiselect(
-                    "Selecione até 3 atletas para comparar como Capitão:",
-                    options=lista_jogadores_busca,
-                    max_selections=3
-                )
-                
+                st.markdown("##### 🧮 Calculadora de Capitão")
+                cap_opcoes = st.multiselect("Comparar Opções de Capitão:", options=lista_jogadores_busca, max_selections=3)
                 if cap_opcoes:
-                    st.markdown("##### 📈 Resultado do Comparativo:")
                     for idx_cap in cap_opcoes:
                         atleta_cap = df_scout_full[df_scout_full["nome_busca"] == idx_cap].iloc[0]
                         confianca = min(98, max(45, int(atleta_cap["media"] * 11)))
                         risco = "Baixo 🟢" if confianca > 75 else ("Médio 🟡" if confianca > 60 else "Alto 🔴")
-                        
                         st.markdown(f"""
-                            <div style="background: rgba(124, 58, 237, 0.1); border: 1px solid #7c3aed; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
-                                <strong>{atleta_cap['jogador']}</strong> ({atleta_cap['time']}) | Média: <strong>{atleta_cap['media']} pts</strong><br>
-                                Índice de Confiança: <span style="color:#00f2ff; font-weight:bold;">{confianca}%</span> | Risco: <strong>{risco}</strong>
+                            <div style="background: rgba(124, 58, 237, 0.1); border: 1px solid #7c3aed; border-radius: 8px; padding: 8px; margin-bottom: 6px; font-size:12px;">
+                                <strong>{atleta_cap['jogador']}</strong> ({atleta_cap['time']}) | Confiança: <span style="color:#00f2ff;">{confianca}%</span> | Risco: {risco}
                             </div>
                         """, unsafe_allow_html=True)
 
@@ -1080,77 +1018,66 @@ if not df.empty:
             c_tit, c_cap = st.columns([2, 1])
 
             with c_tit:
-                # TITULO COM FONTE REDUZIDA E SEM QUEBRA DE LINHA
                 st.markdown(
-                    f'<h4 style="font-size: 18px; white-space: nowrap; margin-bottom: 12px; color: #00f2ff;">'
-                    f'🛡️ Esquadrão Sugerido ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}'
+                    f'<h4 style="font-size: 15px; white-space: nowrap; margin-bottom: 10px; color: #00f2ff;">'
+                    f'🛡️ Esquadrão ({esquema_tatico}) — Custo: C$ {custo_time:.2f} / C$ {orcamento:.2f}'
                     f'</h4>',
                     unsafe_allow_html=True
                 )
                 if not df_titulares.empty:
                     st.dataframe(
-                        df_titulares[["posicao", "jogador", "time", "preco", "min_valorizar", "projecao", "status"]],
+                        df_titulares[["posicao", "jogador", "time", "preco", "min_valorizar", "projecao"]],
                         column_config={
-                            "posicao": "Posição",
+                            "posicao": "Pos",
                             "jogador": "Atleta",
-                            "time": "Clube",
                             "preco": st.column_config.NumberColumn("Custo", format="C$ %.2f"),
-                            "min_valorizar": st.column_config.NumberColumn("Mín. p/ Valorizar", format="%.2f pts"),
-                            "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts")
+                            "min_valorizar": st.column_config.NumberColumn("Mín. Val", format="%.2f"),
+                            "projecao": st.column_config.NumberColumn("Projeção", format="%.2f")
                         },
                         use_container_width=True, hide_index=True
                     )
-                else:
-                    st.warning("Não foi possível montar um time completo com esse orçamento. Tente aumentar o valor disponível.")
 
             with c_cap:
-                st.markdown("### ⭐ Sugestão de Capitães")
+                st.markdown("### ⭐ Capitães")
                 if not df_titulares.empty:
                     capitaes = df_titulares[df_titulares["posicao"] != "TEC"].sort_values(by="projecao", ascending=False).head(3)
                     for i, (_, cap) in enumerate(capitaes.iterrows()):
                         st.markdown(f"""
                             <div class="card-scout-player">
-                                <strong>{i+1}º Capitão: {cap['jogador']}</strong> ({cap['time']})<br>
-                                Posição: {cap['posicao']} | Projeção: <span style="color:#00f2ff; font-weight:bold;">{cap['projecao']} pts</span>
+                                <strong>{i+1}º {cap['jogador']}</strong> ({cap['time']})<br>
+                                Projeção: <span style="color:#00f2ff; font-weight:bold;">{cap['projecao']} pts</span>
                             </div>
                         """, unsafe_allow_html=True)
 
             st.divider()
 
-            st.markdown("### 🏆 Ranking de Oportunidades do Mercado")
+            st.markdown("### 🏆 Ranking do Mercado")
             df_scout_view = df_scout_full if filtro_posicao == "TODAS" else df_scout_full[df_scout_full["posicao"] == filtro_posicao]
             st.dataframe(
-                df_scout_view[["jogador", "time", "posicao", "preco", "min_valorizar", "media", "projecao", "score", "status"]],
+                df_scout_view[["jogador", "time", "posicao", "preco", "min_valorizar", "media", "projecao", "status"]],
                 column_config={
                     "preco": st.column_config.NumberColumn("Preço", format="C$ %.2f"),
-                    "min_valorizar": st.column_config.NumberColumn("Mínimo p/ Valorizar", format="%.2f pts"),
-                    "projecao": st.column_config.NumberColumn("Projeção", format="%.2f pts"),
-                    "score": st.column_config.NumberColumn("Score de Compra", format="%.2f")
+                    "min_valorizar": st.column_config.NumberColumn("Mín. Val", format="%.2f"),
+                    "projecao": st.column_config.NumberColumn("Projeção", format="%.2f")
                 },
                 use_container_width=True, hide_index=True
             )
 
-    # --- TAB 7: IDEIA 2 - RADAR DE SG ---
+    # --- TAB 7: RADAR DE SG ---
     with tab7:
-        st.subheader("🛡️ Radar de Saldo de Gols (Probabilidade de SG)")
-        st.caption("Acompanhe as defesas com maior chance de não sofrer gols na rodada com base nos jogos atuais.")
-        
+        st.subheader("🛡️ Radar de Saldo de Gols (Probabilidade SG)")
         if lista_partidas:
             sg_dados = []
             for p in lista_partidas:
-                sg_dados.append({"Clube": p["nome_casa"], "Mando": "Mandante 🏠", "Probabilidade SG": "78% 🔥"})
-                sg_dados.append({"Clube": p["nome_vis"], "Mando": "Visitante ✈️", "Probabilidade SG": "42% ⚠️"})
+                sg_dados.append({"Clube": p["nome_casa"], "Mando": "Mandante 🏠", "Prob. SG": "78% 🔥"})
+                sg_dados.append({"Clube": p["nome_vis"], "Mando": "Visitante ✈️", "Prob. SG": "42% ⚠️"})
             
             df_sg = pd.DataFrame(sg_dados)
             st.dataframe(df_sg, use_container_width=True, hide_index=True)
-        else:
-            st.info("Informações de confrontos indisponíveis no momento.")
 
-    # --- TAB 8: IDEIA 4 - CARDS FUT ---
+    # --- TAB 8: CARDS FUT ---
     with tab8:
-        st.subheader("🎴 Cards da Zueira & Conquistas (Estilo FUT)")
-        st.caption("Tire um print dos cards abaixo para compartilhar no grupo de WhatsApp da liga!")
-        
+        st.subheader("🎴 Cards da Zueira (Estilo FUT)")
         c_fut1, c_fut2 = st.columns(2)
         
         with c_fut1:
@@ -1160,20 +1087,18 @@ if not df.empty:
                     <div class="fut-card-title">🚀 MITO DA RODADA</div>
                     <div class="fut-card-score">+{mito_rodada['Pontos Ganhos (Última Rodada)']}</div>
                     <div class="fut-card-sub">{mito_rodada['Time']}</div>
-                    <p style="font-size:12px; color:#94a3b8; margin-top:20px;">Cartoleiro: {mito_rodada['Cartoleiro']}</p>
                 </div>
             """, unsafe_allow_html=True)
             
         with c_fut2:
             st.markdown(f"""
-                <div class="fut-card-container" style="border-color: #00f2ff; box-shadow: 0 0 25px rgba(0, 242, 255, 0.4);">
+                <div class="fut-card-container" style="border-color: #00f2ff;">
                     <div class="fut-card-badge" style="color:#00f2ff;">BLACK GUYS LEAGUE</div>
                     <div class="fut-card-title">🥇 LÍDER GERAL</div>
                     <div class="fut-card-score" style="color:#eab308;">{lider_geral['Total Acumulado']}</div>
                     <div class="fut-card-sub">{lider_geral['Time']}</div>
-                    <p style="font-size:12px; color:#94a3b8; margin-top:20px;">Cartoleiro: {lider_geral['Cartoleiro']}</p>
                 </div>
             """, unsafe_allow_html=True)
 
     st.divider()
-    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Cache em SessionState Ativo.")
+    st.caption(f"⚡ Black Guys League | Rodada {rodada_atual} | Responsivo em Dispositivos Móveis.")
