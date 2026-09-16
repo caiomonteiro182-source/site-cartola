@@ -2,6 +2,7 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import os
+import random
 import re
 import plotly.express as px
 import pandas as pd
@@ -41,7 +42,6 @@ st.markdown(
         font-family: 'Rajdhani', sans-serif;
     }
 
-    /* CONTÊINER DO CABEÇALHO RESPONSIVO */
     .header-main-flex {
         display: flex;
         align-items: center;
@@ -254,7 +254,6 @@ st.markdown(
         border-bottom: 3px solid #00f2ff !important;
     }
 
-    /* REGRAS EXCLUSIVAS PARA SMARTPHONES (TELA < 768px) */
     @media (max-width: 768px) {
         .header-main-flex {
             flex-direction: column;
@@ -926,11 +925,12 @@ if not df.empty:
   st.write("")
 
   # ==========================================
-  # 7. ABAS PRINCIPAIS (SEM ABA DE WHATSAPP)
+  # 7. ABAS PRINCIPAIS (INCLUINDO ARENA INTERATIVA)
   # ==========================================
-  tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+  tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
       "🏆 Classificação",
       "⚔️ X1",
+      "🎮 Arena Interativa",  # <- NOVA ABA INTERATIVA
       "🥇 Campeões",
       "💰 Valorização",
       "🤖 Scout Lab",
@@ -1193,16 +1193,129 @@ if not df.empty:
         st.metric("Total", f"{d2['Total Acumulado']} pts")
         st.metric("Patrimônio", f"C$ {d2['Patrimônio (C$)']}")
 
-  # --- TAB 3: CAMPEÕES DO MÊS ---
+  # --- TAB 3: ARENA INTERATIVA (JOGOS & PALPITES) ---
   with tab3:
+    st.subheader("🎮 Arena da Resenha - Bolão & Enquetes")
+
+    col_game1, col_game2 = st.columns([1, 1])
+
+    with col_game1:
+      st.markdown("### 🎯 Bolão da Rodada")
+      st.caption("Registre seus palpites antes do fechamento do mercado!")
+
+      seuar_time = st.selectbox(
+          "Seu Time (Quem está palpitando):",
+          options=df["Time"].tolist(),
+          key="bolao_user",
+      )
+      palpite_mito = st.selectbox(
+          "Quem será o MITO da Rodada?",
+          options=df["Time"].tolist(),
+          key="bolao_mito",
+      )
+      palpite_mala = st.selectbox(
+          "Quem será o MALA CHEIA?",
+          options=df["Time"].tolist(),
+          index=len(df) - 1,
+          key="bolao_mala",
+      )
+      pts_lider = st.slider(
+          "Quantos pontos o Líder fará?",
+          min_value=30.0,
+          max_value=130.0,
+          value=75.0,
+          step=1.0,
+      )
+
+      if st.button("🚀 Enviar Palpites Oficiais", use_container_width=True):
+        st.session_state["palpite_salvo"] = {
+            "usuario": seuar_time,
+            "mito": palpite_mito,
+            "mala": palpite_mala,
+            "pts": pts_lider,
+        }
+        st.balloons()
+        st.success("✅ Palpites registrados com sucesso no sistema!")
+
+      if "palpite_salvo" in st.session_state:
+        p = st.session_state["palpite_salvo"]
+        st.markdown(f"""
+                <div style="background: rgba(0, 242, 255, 0.1); border: 1px solid #00f2ff; padding: 10px; border-radius: 8px; margin-top: 10px; font-size:13px;">
+                    📌 <strong>Palpite Registrado ({p['usuario']}):</strong><br>
+                    • Mito: <span style="color:#00f2ff;">{p['mito']}</span><br>
+                    • Mala Cheia: <span style="color:#f43f5e;">{p['mala']}</span><br>
+                    • Pts Líder: <strong>{p['pts']} pts</strong>
+                </div>
+            """, unsafe_allow_html=True)
+
+    with col_game2:
+      st.markdown("### ⚔️ Duelódromo da Galera")
+      st.caption("Quem vence o confronto direto da rodada?")
+
+      # Seleção de 2 rivais para votação
+      t_rival1 = df.iloc[0]["Time"]
+      t_rival2 = df.iloc[1]["Time"] if len(df) > 1 else df.iloc[0]["Time"]
+
+      st.markdown(f"#### 🥊 {t_rival1}  VS  {t_rival2}")
+
+      voto = st.radio(
+          "Em quem você aposta?",
+          options=[t_rival1, t_rival2, "Empate Térmico"],
+          horizontal=True,
+      )
+
+      if st.button("🗳️ Confirmar Voto", use_container_width=True):
+        if "votos_duelo" not in st.session_state:
+          st.session_state["votos_duelo"] = {
+              t_rival1: 5,
+              t_rival2: 3,
+              "Empate Térmico": 1,
+          }
+
+        st.session_state["votos_duelo"][voto] += 1
+        st.toast(f"Voto computado em {voto}!", icon="🔥")
+
+      if "votos_duelo" in st.session_state:
+        vd = st.session_state["votos_duelo"]
+        tot = sum(vd.values())
+        st.write("")
+        st.markdown("##### 📊 Parcial da Torcida no Grupo:")
+        for k, v in vd.items():
+          pct = (v / tot) * 100
+          st.progress(int(pct), text=f"{k}: {pct:.1f}% ({v} votos)")
+
+    st.divider()
+
+    # 🎰 ROLETA DO CAPITÃO (SORTEIO INTERATIVO)
+    st.markdown("### 🎰 Roleta do Capitão Cego")
+    st.caption("Tá na dúvida de quem colocar de capitão? Deixa a sorte decidir!")
+
+    if st.button("🎲 GIRAR ROLETA DA SORTE", use_container_width=True):
+      df_scout_sim, _ = carregar_dados_completos_scout()
+      if not df_scout_sim.empty:
+        opcoes_cap = df_scout_sim[df_scout_sim["status_id"] == 7][
+            "jogador"
+        ].tolist()
+        if opcoes_cap:
+          sorteado = random.choice(opcoes_cap)
+          st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); border: 2px solid #eab308; padding: 15px; border-radius: 12px; text-align: center; margin-top: 10px;">
+                        <span style="color:#eab308; font-weight:bold; font-size:12px;">🎰 A ROLETA MANDOU ESCALAR:</span>
+                        <h2 style="color:#ffffff; margin: 5px 0;">⭐ {sorteado}</h2>
+                        <span style="color:#00f2ff; font-size:12px;">Coloque como capitão e reze pelo mito! 🚀</span>
+                    </div>
+                """, unsafe_allow_html=True)
+
+  # --- TAB 4: CAMPEÕES DO MÊS ---
+  with tab4:
     st.subheader("👑 Galeria de Campeões Mensais")
     if df_vencedores is not None and not df_vencedores.empty:
       st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
     else:
       st.info("📌 Arquivo `base_vencedores.csv` não encontrado.")
 
-  # --- TAB 4: GUIA DE VALORIZAÇÃO ---
-  with tab4:
+  # --- TAB 5: GUIA DE VALORIZAÇÃO ---
+  with tab5:
     st.subheader("💰 Patrimônio & Valorização Ao Vivo")
     df_val = df.sort_values(
         by="Valorização (C$)", ascending=False
@@ -1228,8 +1341,8 @@ if not df.empty:
         hide_index=True,
     )
 
-  # --- TAB 5: SCOUT LAB ATUALIZADO COMPLETO ---
-  with tab5:
+  # --- TAB 6: SCOUT LAB ATUALIZADO COMPLETO ---
+  with tab6:
     st.subheader("🤖 Cartola Scout Lab - Análise do Mercado")
     df_scout_full, r_num = carregar_dados_completos_scout()
 
@@ -1501,8 +1614,8 @@ if not df.empty:
           "⚠️ Não foi possível obter os dados do Scout Lab no momento."
       )
 
-  # --- TAB 6: RADAR DE SG ---
-  with tab6:
+  # --- TAB 7: RADAR DE SG ---
+  with tab7:
     st.subheader("🛡️ Radar de Saldo de Gols (Probabilidade SG)")
     if lista_partidas:
       sg_dados = []
@@ -1521,8 +1634,8 @@ if not df.empty:
       df_sg = pd.DataFrame(sg_dados)
       st.dataframe(df_sg, use_container_width=True, hide_index=True)
 
-  # --- TAB 7: CARDS FUT ---
-  with tab7:
+  # --- TAB 8: CARDS FUT ---
+  with tab8:
     st.subheader("🎴 Cards da Zueira (Estilo FUT)")
     c_fut1, c_fut2 = st.columns(2)
 
