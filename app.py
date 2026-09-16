@@ -698,7 +698,6 @@ def carregar_dados_completos_scout():
       projecao = media * 1.15 if status_id == 7 else media * 0.85
       score = (projecao * 0.60) + ((projecao / max(0.1, preco)) * 4.0)
 
-      # ESTIMATIVA DE GANHO/PERDA DE CARTOLETAS (Fator de sensibilidade ~ 0.30)
       diferenca_pts = projecao - mpv
       variacao_estimada = round(diferenca_pts * 0.30, 2)
 
@@ -927,12 +926,11 @@ if not df.empty:
   st.write("")
 
   # ==========================================
-  # 7. ABAS PRINCIPAIS
+  # 7. ABAS PRINCIPAIS (SEM ABA DE WHATSAPP)
   # ==========================================
-  tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+  tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
       "🏆 Classificação",
       "⚔️ X1",
-      "📱 WhatsApp",
       "🥇 Campeões",
       "💰 Valorização",
       "🤖 Scout Lab",
@@ -1034,7 +1032,7 @@ if not df.empty:
 
     st.divider()
 
-    # --- MATRIZ TÁTICA: PATRIMÔNIO X PONTUAÇÃO (OTIMIZADO PARA MOBILE) ---
+    # MATRIZ TÁTICA: PATRIMÔNIO X PONTUAÇÃO (MOBILE READY)
     st.markdown("### 🎯 Matriz Tática: Patrimônio vs. Pontuação Total")
 
     media_pts = df["Total Acumulado"].mean()
@@ -1195,36 +1193,16 @@ if not df.empty:
         st.metric("Total", f"{d2['Total Acumulado']} pts")
         st.metric("Patrimônio", f"C$ {d2['Patrimônio (C$)']}")
 
-  # --- TAB 3: RESUMO WHATSAPP ---
+  # --- TAB 3: CAMPEÕES DO MÊS ---
   with tab3:
-    st.subheader("📱 Resumo para WhatsApp")
-    texto_wa = (
-        f"*🚨 RESUMO BLACK GUYS LEAGUE - RODADA {rodada_atual} 🚨*\n\n"
-        f"🥇 *LÍDER GERAL:* {lider_geral['Time']} ({lider_geral['Total Acumulado']}"
-        " pts)\n🚀 *MITO DA RODADA:* {mito_rodada['Time']}"
-        f" (+{mito_rodada['Pontos Ganhos (Última Rodada)']} pts)\n📉 *MALA"
-        f" CHEIA:* {pior_rodada['Time']}"
-        f" ({pior_rodada['Pontos Ganhos (Última Rodada)']} pts)\n\n*TOP 5 DA"
-        " LIGA:*\n"
-    )
-    for i, row in df.head(5).iterrows():
-      texto_wa += (
-          f"{row['Posição Geral']}º {row['Time']} - {row['Total Acumulado']}"
-          " pts\n"
-      )
-
-    st.code(texto_wa, language="markdown")
-
-  # --- TAB 4: CAMPEÕES DO MÊS ---
-  with tab4:
     st.subheader("👑 Galeria de Campeões Mensais")
     if df_vencedores is not None and not df_vencedores.empty:
       st.dataframe(df_vencedores, use_container_width=True, hide_index=True)
     else:
       st.info("📌 Arquivo `base_vencedores.csv` não encontrado.")
 
-  # --- TAB 5: GUIA DE VALORIZAÇÃO ---
-  with tab5:
+  # --- TAB 4: GUIA DE VALORIZAÇÃO ---
+  with tab4:
     st.subheader("💰 Patrimônio & Valorização Ao Vivo")
     df_val = df.sort_values(
         by="Valorização (C$)", ascending=False
@@ -1250,13 +1228,12 @@ if not df.empty:
         hide_index=True,
     )
 
-  # --- TAB 6: SCOUT LAB ATUALIZADO COMPLETO ---
-  with tab6:
+  # --- TAB 5: SCOUT LAB ATUALIZADO COMPLETO ---
+  with tab5:
     st.subheader("🤖 Cartola Scout Lab - Análise do Mercado")
     df_scout_full, r_num = carregar_dados_completos_scout()
 
     if not df_scout_full.empty:
-      # 1. MÉTRICAS SUPERIORES DO MERCADO
       provaveis_cnt = len(df_scout_full[df_scout_full["status_id"] == 7])
       preco_medio = df_scout_full["preco"].mean()
       media_top = df_scout_full[df_scout_full["status_id"] == 7]["media"].max()
@@ -1269,7 +1246,6 @@ if not df.empty:
 
       st.divider()
 
-      # 2. BARRA DE FILTROS E BUSCA EM TEMPO REAL
       f_col1, f_col2, f_col3 = st.columns([2, 2, 1])
 
       with f_col1:
@@ -1295,7 +1271,6 @@ if not df.empty:
       with f_col3:
         apenas_provaveis = st.checkbox("Somente Prováveis 🟢", value=True)
 
-      # 3. FILTRAGEM DINÂMICA
       df_exibicao = df_scout_full.copy()
 
       if apenas_provaveis:
@@ -1315,7 +1290,6 @@ if not df.empty:
           by="score", ascending=False
       ).reset_index(drop=True)
 
-      # 4. TABELA COMPLETA COM ESTIMATIVA DE VALORIZAÇÃO
       st.markdown(
           f"### 📋 Atletas Recomendados ({len(df_exibicao)} encontrados)"
       )
@@ -1359,7 +1333,6 @@ if not df.empty:
 
       st.divider()
 
-      # 5. SIMULADOR INTERATIVO DE PONTUAÇÃO E VALORIZAÇÃO
       st.markdown("### 🧮 Simulador de Valorização em Tempo Real")
       df_provaveis_sim = df_scout_full[
           df_scout_full["status_id"] == 7
@@ -1420,7 +1393,6 @@ if not df.empty:
 
       st.divider()
 
-      # 6. MONTADOR DE ESQUADRÃO AUTOMÁTICO
       st.markdown("### 🚀 Montador de Time Ideal por Orçamento")
       col_b1, col_b2 = st.columns([1, 2])
 
@@ -1529,8 +1501,8 @@ if not df.empty:
           "⚠️ Não foi possível obter os dados do Scout Lab no momento."
       )
 
-  # --- TAB 7: RADAR DE SG ---
-  with tab7:
+  # --- TAB 6: RADAR DE SG ---
+  with tab6:
     st.subheader("🛡️ Radar de Saldo de Gols (Probabilidade SG)")
     if lista_partidas:
       sg_dados = []
@@ -1549,8 +1521,8 @@ if not df.empty:
       df_sg = pd.DataFrame(sg_dados)
       st.dataframe(df_sg, use_container_width=True, hide_index=True)
 
-  # --- TAB 8: CARDS FUT ---
-  with tab8:
+  # --- TAB 7: CARDS FUT ---
+  with tab7:
     st.subheader("🎴 Cards da Zueira (Estilo FUT)")
     c_fut1, c_fut2 = st.columns(2)
 
