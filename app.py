@@ -925,12 +925,12 @@ if not df.empty:
   st.write("")
 
   # ==========================================
-  # 7. ABAS PRINCIPAIS (INCLUINDO ARENA INTERATIVA)
+  # 7. ABAS PRINCIPAIS
   # ==========================================
   tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
       "🏆 Classificação",
       "⚔️ X1",
-      "🎮 Arena Interativa",  # <- NOVA ABA INTERATIVA
+      "🎮 Arena Interativa",
       "🥇 Campeões",
       "💰 Valorização",
       "🤖 Scout Lab",
@@ -1193,9 +1193,80 @@ if not df.empty:
         st.metric("Total", f"{d2['Total Acumulado']} pts")
         st.metric("Patrimônio", f"C$ {d2['Patrimônio (C$)']}")
 
-  # --- TAB 3: ARENA INTERATIVA (JOGOS & PALPITES) ---
+  # --- TAB 3: ARENA INTERATIVA (NOVA CALCULADORA DE ARRANCADA INCLUÍDA) ---
   with tab3:
-    st.subheader("🎮 Arena da Resenha - Bolão & Enquetes")
+    st.subheader("🎮 Arena da Resenha & Ferramentas Interativas")
+
+    # 🚀 CALCULADORA DE ARRANCADA (ULTRA-INTERATIVA POR POSIÇÃO)
+    st.markdown("### 📊 Calculadora de Arrancada (Próxima Posição)")
+    st.caption(
+        "Descubra exatamente quantos pontos você precisa fazer por rodada para"
+        " ultrapassar o adversário diretamente acima de você!"
+    )
+
+    col_calc1, col_calc2 = st.columns([1, 1])
+
+    with col_calc1:
+      time_arrancada = st.selectbox(
+          "Selecione o seu Time:",
+          options=df["Time"].tolist(),
+          key="calc_time_user",
+      )
+
+      # Identifica a posição e os dados do time selecionado
+      dados_usr = df[df["Time"] == time_arrancada].iloc[0]
+      pos_atual = int(dados_usr["Posição Geral"])
+      pts_usr = float(dados_usr["Total Acumulado"])
+
+      # Slider interativo de rodadas restantes no campeonato (Padronizado até 38)
+      rodadas_restantes = st.slider(
+          "Rodadas Restantes no Campeonato:",
+          min_value=1,
+          max_value=38,
+          value=max(1, 38 - rodada_atual + 1),
+          step=1,
+      )
+
+    with col_calc2:
+      if pos_atual == 1:
+        st.markdown(
+            """
+                    <div style="background: rgba(163, 230, 53, 0.15); border: 1px solid #a3e635; padding: 15px; border-radius: 12px; text-align: center;">
+                        <h4 style="color:#a3e635; margin:0;">🥇 VOCÊ JÁ É O LÍDER GERAL!</h4>
+                        <p style="color:#94a3b8; font-size:13px; margin-top:5px;">Continue acelerando para manter a vantagem sobre o 2º colocado!</p>
+                    </div>
+                """,
+            unsafe_allow_html=True,
+        )
+      else:
+        # Pega o adversário da posição imediatamente superior
+        alvo_usr = df[df["Posição Geral"] == (pos_atual - 1)].iloc[0]
+        nome_alvo = alvo_usr["Time"]
+        pts_alvo = float(alvo_usr["Total Acumulado"])
+
+        diferenca_pts = pts_alvo - pts_usr + 0.10  # Margem mínima de +0.10 pts
+        media_necessaria = diferenca_pts / rodadas_restantes
+
+        st.markdown(
+            f"""
+                    <div style="background: rgba(18, 12, 38, 0.9); border: 2px solid #00f2ff; border-radius: 12px; padding: 14px;">
+                        <div style="font-size:12px; color:#c084fc; font-weight:bold;">ALVO: {pos_atual-1}º LUGAR ({nome_alvo})</div>
+                        <div style="font-size:13px; color:#f8fafc; margin-top:4px;">
+                            Diferença Atual: <strong>{diferenca_pts:.2f} pts</strong>
+                        </div>
+                        <div style="margin-top:10px; padding:10px; background:rgba(0, 242, 255, 0.1); border-radius:8px; text-align:center;">
+                            <span style="font-size:11px; color:#94a3b8; text-transform:uppercase;">Você precisa tirar por rodada:</span>
+                            <div style="font-family:'Orbitron', sans-serif; font-size:26px; font-weight:900; color:#00f2ff;">
+                                +{media_necessaria:.2f} pts/rodada
+                            </div>
+                            <span style="font-size:11px; color:#94a3b8;">considerando que {nome_alvo} pontue na média da liga.</span>
+                        </div>
+                    </div>
+                """,
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
 
     col_game1, col_game2 = st.columns([1, 1])
 
@@ -1239,20 +1310,22 @@ if not df.empty:
 
       if "palpite_salvo" in st.session_state:
         p = st.session_state["palpite_salvo"]
-        st.markdown(f"""
+        st.markdown(
+            f"""
                 <div style="background: rgba(0, 242, 255, 0.1); border: 1px solid #00f2ff; padding: 10px; border-radius: 8px; margin-top: 10px; font-size:13px;">
                     📌 <strong>Palpite Registrado ({p['usuario']}):</strong><br>
                     • Mito: <span style="color:#00f2ff;">{p['mito']}</span><br>
                     • Mala Cheia: <span style="color:#f43f5e;">{p['mala']}</span><br>
                     • Pts Líder: <strong>{p['pts']} pts</strong>
                 </div>
-            """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
 
     with col_game2:
       st.markdown("### ⚔️ Duelódromo da Galera")
       st.caption("Quem vence o confronto direto da rodada?")
 
-      # Seleção de 2 rivais para votação
       t_rival1 = df.iloc[0]["Time"]
       t_rival2 = df.iloc[1]["Time"] if len(df) > 1 else df.iloc[0]["Time"]
 
@@ -1298,13 +1371,16 @@ if not df.empty:
         ].tolist()
         if opcoes_cap:
           sorteado = random.choice(opcoes_cap)
-          st.markdown(f"""
+          st.markdown(
+              f"""
                     <div style="background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); border: 2px solid #eab308; padding: 15px; border-radius: 12px; text-align: center; margin-top: 10px;">
                         <span style="color:#eab308; font-weight:bold; font-size:12px;">🎰 A ROLETA MANDOU ESCALAR:</span>
                         <h2 style="color:#ffffff; margin: 5px 0;">⭐ {sorteado}</h2>
                         <span style="color:#00f2ff; font-size:12px;">Coloque como capitão e reze pelo mito! 🚀</span>
                     </div>
-                """, unsafe_allow_html=True)
+                """,
+              unsafe_allow_html=True,
+          )
 
   # --- TAB 4: CAMPEÕES DO MÊS ---
   with tab4:
