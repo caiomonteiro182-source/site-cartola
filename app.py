@@ -1033,6 +1033,104 @@ if not df.empty:
       )
 
     st.divider()
+
+    # --- MATRIZ TÁTICA: PATRIMÔNIO X PONTUAÇÃO (OTIMIZADO PARA MOBILE) ---
+    st.markdown("### 🎯 Matriz Tática: Patrimônio vs. Pontuação Total")
+
+    media_pts = df["Total Acumulado"].mean()
+    media_patr = df["Patrimônio (C$)"].mean()
+
+    def classificar_perfil(row):
+      if (
+          row["Total Acumulado"] >= media_pts
+          and row["Patrimônio (C$)"] >= media_patr
+      ):
+        return "🚀 Estrategista (Equilibrado)"
+      elif (
+          row["Total Acumulado"] >= media_pts
+          and row["Patrimônio (C$)"] < media_patr
+      ):
+        return "🎯 Mito Pobre (Foco em Pts)"
+      elif (
+          row["Total Acumulado"] < media_pts
+          and row["Patrimônio (C$)"] >= media_patr
+      ):
+        return "💰 Tio Patinhas (Cofre Cheio)"
+      else:
+        return "📉 Mala Cheia (Alerta)"
+
+    df_analise = df.copy()
+    df_analise["Perfil"] = df_analise.apply(classificar_perfil, axis=1)
+
+    fig_quadrantes = px.scatter(
+        df_analise,
+        x="Patrimônio (C$)",
+        y="Total Acumulado",
+        hover_name="Time",
+        color="Perfil",
+        hover_data={
+            "Cartoleiro": True,
+            "Posição Geral": True,
+            "Pontos Ganhos (Última Rodada)": ":.2f",
+            "Patrimônio (C$)": ":.2f",
+            "Total Acumulado": ":.2f",
+            "Perfil": False,
+        },
+        size=[14] * len(df_analise),
+        color_discrete_map={
+            "🚀 Estrategista (Equilibrado)": "#00f2ff",
+            "🎯 Mito Pobre (Foco em Pts)": "#a3e635",
+            "💰 Tio Patinhas (Cofre Cheio)": "#eab308",
+            "📉 Mala Cheia (Alerta)": "#f43f5e",
+        },
+        template="plotly_dark",
+    )
+
+    fig_quadrantes.update_traces(
+        marker=dict(opacity=0.9, line=dict(width=1, color="#ffffff"))
+    )
+
+    fig_quadrantes.add_vline(
+        x=media_patr,
+        line_dash="dash",
+        line_color="#94a3b8",
+        annotation_text=f"C$: {media_patr:.1f}",
+        annotation_position="bottom right",
+    )
+    fig_quadrantes.add_hline(
+        y=media_pts,
+        line_dash="dash",
+        line_color="#94a3b8",
+        annotation_text=f"Pts: {media_pts:.1f}",
+        annotation_position="top left",
+    )
+
+    fig_quadrantes.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(10, 8, 22, 0.5)",
+        margin=dict(l=10, r=10, t=30, b=10),
+        xaxis=dict(
+            title="Patrimônio (C$)", gridcolor="rgba(255,255,255,0.05)"
+        ),
+        yaxis=dict(title="Pontos Totais", gridcolor="rgba(255,255,255,0.05)"),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            title=None,
+        ),
+    )
+
+    st.plotly_chart(
+        fig_quadrantes,
+        use_container_width=True,
+        config={"displayModeBar": False, "scrollZoom": False},
+    )
+
+    st.divider()
+
     st.markdown("### 📊 Comparativo da Liga")
     fig_bar = px.bar(
         df.head(10),
